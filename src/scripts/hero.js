@@ -1,3 +1,4 @@
+import {assetUrl} from '../lib/asset-url.js';
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
@@ -9,9 +10,9 @@ async function startHero(){
  // Start all transfers before environment lighting and shader preparation.
  const checked=async url=>{const response=await fetch(url);if(!response.ok)throw Error(`Asset unavailable: ${url}`);return response};
  const [gltf,particleData,type]=await Promise.all([
-  new GLTFLoader().loadAsync('/assets/hero-assets.glb'),
-  checked('/assets/globe.bin').then(r=>r.arrayBuffer()),
-  checked('/assets/lettering.json').then(r=>r.json())
+  new GLTFLoader().loadAsync(assetUrl('assets/hero-assets.glb')),
+  checked(assetUrl('assets/globe.bin')).then(r=>r.arrayBuffer()),
+  checked(assetUrl('assets/lettering.json')).then(r=>r.json())
  ]);
  const lowPower=(navigator.hardwareConcurrency||8)<=4||(navigator.deviceMemory||8)<=4;
  let pixelRatio=Math.min(devicePixelRatio,lowPower?1.25:1.75),frameInterval=lowPower?1000/30:0,dirty=true;

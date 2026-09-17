@@ -26,3 +26,22 @@ The first visible hero is the complete 3D assembly. Its meshes and particle data
 ## Hosting
 
 The existing owner-private Site is bound through `.openai/hosting.json`. Its static output directory is `dist`. Original church links continue to point to the official website.
+
+## GitHub Pages
+
+The workflow `.github/workflows/deploy.yml` builds and deploys `main`, or can be run manually from GitHub Actions. It uses Node 22, the npm lockfile, and publishes only `dist/`.
+
+1. Open repository Settings > Pages and set Source to GitHub Actions.
+2. Open Actions > Deploy to GitHub Pages > Run workflow, choose main, and run it.
+3. After both jobs succeed, open https://serghdz.github.io/MWC-Demo/.
+
+Later pushes to main publish automatically. The workflow reads the site URL and base path from GitHub Pages, so images and 3D assets work under /MWC-Demo/. Local previews continue at /.
+
+To verify the project-path build:
+
+```sh
+npm run build -- --site https://serghdz.github.io --base /MWC-Demo/
+node scripts/check-assets.mjs /MWC-Demo/
+```
+
+A normal `npm run build` returns to a root-path build. The `.openai/` folder stays local and ignored by Git; GitHub Pages does not require or publish it.

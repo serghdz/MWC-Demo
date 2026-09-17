@@ -28,7 +28,8 @@ for(let i=0;i<count;i++){
 assert(blue>500&&green>500,'World must contain noticeable blue and green land particles');
 const html=await readFile(new URL('dist/index.html',base),'utf8');
 const refs=[...html.matchAll(/(?:src|href)="([^"#]+)"/g)].map(m=>m[1]).filter(v=>v.startsWith('/'));
+const publicBase=(process.argv[2]??'/').replace(/\/?$/, '/');
 let jsBytes=0,jsGzip=0;
-for(const ref of refs){const file=new URL('dist'+ref.split('?')[0],base);await stat(file);if(ref.endsWith('.js')){const data=await readFile(file);jsBytes+=data.length;jsGzip+=gzipSync(data).length}}
+for(const ref of refs){assert(ref.startsWith(publicBase),`Asset missing base path: ${ref}`);const file=new URL('dist/'+ref.split('?')[0].slice(publicBase.length),base);await stat(file);if(ref.endsWith('.js')){const data=await readFile(file);jsBytes+=data.length;jsGzip+=gzipSync(data).length}}
 assert(!html.includes('type="importmap"'));assert(html.includes('Mission World Church'));assert(html.includes('aria-pressed'));
 console.log(JSON.stringify({meshes:meshes.length,globePoints:count,blueLand:blue,greenLand:green,ringPlanarVertices:planar,ringDepth:depth*2,heroMeshKB:Math.round(bytes.length/1024),particleKB:Math.round(binary.length/1024),javascriptKB:Math.round(jsBytes/1024),javascriptGzipKB:Math.round(jsGzip/1024),localBuildReferences:refs.length},null,2));
