@@ -3,7 +3,7 @@ import "../styles/global.css";
 import { assetUrl } from "../lib/asset-url.js";
 const shareTitle = "Mission World Church — Live the Gospel Together";
 const shareDescription = "Cultivating the human experience by living out the mission of the Gospel together. Join us in Houston on Sundays at 12 PM.";
-const shareBase = Astro.site ? new URL(import.meta.env.BASE_URL, Astro.site) : new URL("https://serghdz.github.io/MWC-Demo/");
+const shareBase = Astro.site ? new URL(`${import.meta.env.BASE_URL.replace(/\/$/, "")}/`, Astro.site) : new URL("https://serghdz.github.io/MWC-Demo/");
 const shareImage = new URL("og.png", shareBase).href;
 ---
 <!doctype html>
