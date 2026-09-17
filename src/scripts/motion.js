@@ -60,33 +60,77 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{win
     }
    }
   }
-  for(const p of photos){const r=p.el.getBoundingClientRect();p.x=r.left;p.y=r.top+scrollY;p.w=r.width;p.h=r.height;for(const c of[p.cover,p.grid]){c.width=Math.round(r.width*dpr);c.height=Math.round(r.height*dpr);c.getContext('2d').setTransform(dpr,0,0,dpr,0,0)}p.last=-1}
+  for(const p of photos){const r=p.el.getBoundingClientRect();p.x=r.left;p.y=r.top+scrollY;p.w=r.width;p.h=r.height;for(const c of[p.cover,p.grid]){c.width=Math.round(r.width*dpr);c.height=Math.round(r.height*dpr);c.getContext('2d').setTransform(dpr,0,0,dpr,0,0)}preparePhotoParticles(p);p.last=-1}
   measured=true;wake();
  }
  function scheduleMeasure(){if(!measureRaf)measureRaf=requestAnimationFrame(()=>{measureRaf=0;measure()})}
  document.querySelectorAll('.particle-photo').forEach(el=>{
   const img=el.querySelector('img'),cover=document.createElement('canvas'),grid=document.createElement('canvas');cover.className='photo-dissolve';grid.className='photo-grid';cover.setAttribute('aria-hidden','true');grid.setAttribute('aria-hidden','true');el.append(cover,grid);
-  const p={el,img,cover,grid,mx:.5,my:.5,tx:.5,ty:.5,hover:0,active:false,last:-1};photos.push(p);
+  const p={el,img,cover,grid,mx:.5,my:.5,tx:.5,ty:.5,hover:0,active:false,last:-1,points:[],particleKey:''};photos.push(p);
   el.addEventListener('pointermove',e=>{const r=el.getBoundingClientRect();p.tx=(e.clientX-r.left)/r.width;p.ty=(e.clientY-r.top)/r.height;p.active=e.pointerType!=='touch';wake()});
   el.addEventListener('pointerleave',()=>{p.active=false;wake()});el.addEventListener('focus',()=>{p.active=true;p.tx=p.ty=.5;wake()});el.addEventListener('blur',()=>{p.active=false;wake()});img.addEventListener('load',scheduleMeasure);
  });
+ // Sample a small image once per size/load, never read pixels while scrolling.
+ function preparePhotoParticles(p){
+  if(!p.img.complete||!p.img.naturalWidth||!p.w||!p.h)return;
+  const position=getComputedStyle(p.img).objectPosition;
+  const key=[p.w,p.h,p.img.naturalWidth,p.img.naturalHeight,p.img.currentSrc,position].join('|');
+  if(key===p.particleKey)return;
+  const step=Math.max(5.5,Math.sqrt(p.w*p.h/(vw<700?1800:3400)));
+  const columns=Math.max(1,Math.floor(p.w/step)),rows=Math.max(1,Math.floor(p.h/step));
+  const sample=document.createElement('canvas');sample.width=columns;sample.height=rows;
+  const sc=sample.getContext('2d',{willReadFrequently:true});if(!sc)return;
+  const imageRatio=p.img.naturalWidth/p.img.naturalHeight,boxRatio=p.w/p.h;
+  let sw=p.img.naturalWidth,sh=p.img.naturalHeight;
+  if(imageRatio>boxRatio)sw=sh*boxRatio;else sh=sw/boxRatio;
+  const align=position.split(' ').map(v=>v.endsWith('%')?clamp(parseFloat(v)/100):.5);
+  const sx=(p.img.naturalWidth-sw)*(align[0]??.5),sy=(p.img.naturalHeight-sh)*(align[1]??.5);
+  p.points=[];
+  try{
+   sc.drawImage(p.img,sx,sy,sw,sh,0,0,columns,rows);
+   const pixels=sc.getImageData(0,0,columns,rows).data;
+   for(let row=0;row<rows;row++)for(let col=0;col<columns;col++){
+    const i=(row*columns+col)*4,seed=hash(col*7+row*19),turn=hash(col*17+row*3);
+    const tint=seed>.5?[143,201,255]:[139,239,198];
+    const color=seed<.22?(turn>.5?'#8fc9ff':'#8befc6'):`rgb(${Math.round(pixels[i]*.8+tint[0]*.2)},${Math.round(pixels[i+1]*.8+tint[1]*.2)},${Math.round(pixels[i+2]*.8+tint[2]*.2)})`;
+    const angle=turn*Math.PI*2,distance=9+seed*24;
+    p.points.push({x:(col+.5+(turn-.5)*.22)/columns*p.w,y:(row+.5+(seed-.5)*.22)/rows*p.h,
+     delay:seed*.15+row/rows*.06,dx:Math.cos(angle)*distance,dy:Math.sin(angle)*distance-5,
+     radius:.65+turn*.8,alpha:.58+seed*.35,color});
+   }
+  }catch{
+   // A plain soft fade remains available if an image cannot be sampled.
+   p.points=[];
+  }
+  p.particleKey=key;
+ }
  function renderPhoto(p,time,dt,paused){
-  const y=p.y-scroll;if(y>vh+80||y+p.h<0)return false;
-  const desired=paused?1:smooth((vh*.94-y)/Math.min(vh*.65,p.h*.85));
-  if(p.progress===undefined||paused)p.progress=desired;else p.progress+=(desired-p.progress)*(1-Math.exp(-dt/.085));
-  const settling=Math.abs(desired-p.progress)>.0008;if(!settling)p.progress=desired;const progress=p.progress;
+  const y=p.y-scroll;
+  if(y>vh+100||y+p.h< -100){p.progress=y<0?1:0;p.last=-1;return false}
+  const desired=paused?1:clamp((vh*.96-y)/Math.min(vh*.68,p.h*.95));
+  if(p.progress===undefined||paused)p.progress=desired;
+  else p.progress+=(desired-p.progress)*(1-Math.exp(-dt/.11));
+  const settling=Math.abs(desired-p.progress)>.0008;if(!settling)p.progress=desired;
+  const progress=p.progress,ink=paused?1:smooth((progress-.18)/.72);
   const cc=p.cover.getContext('2d');
-  if(Math.abs(progress-p.last)>.005&&p.img.complete&&p.img.naturalWidth){
+  if(Math.abs(progress-p.last)>.0005&&p.img.complete&&p.img.naturalWidth){
    p.last=progress;cc.clearRect(0,0,p.w,p.h);
-   if(progress>.995||paused){p.img.style.opacity='1';p.cover.style.opacity='0'}else{p.img.style.opacity='0';p.cover.style.opacity='1';
-    const imageRatio=p.img.naturalWidth/p.img.naturalHeight,boxRatio=p.w/p.h;let sw=p.img.naturalWidth,sh=p.img.naturalHeight;if(imageRatio>boxRatio)sw=sh*boxRatio;else sh=sw/boxRatio;const sx=(p.img.naturalWidth-sw)/2,sy=(p.img.naturalHeight-sh)/2;
-    const cell=12;for(let y=0;y<p.h;y+=cell)for(let x=0;x<p.w;x+=cell){const seed=hash(x*3+y*17);const alpha=smooth((progress*1.6-seed*.45-y/p.h*.15)*2);if(alpha<.01)continue;cc.globalAlpha=alpha;const w=Math.min(cell+.5,p.w-x),h=Math.min(cell+.5,p.h-y);cc.drawImage(p.img,sx+x/p.w*sw,sy+y/p.h*sh,w/p.w*sw,h/p.h*sh,x,y,w,h)}cc.globalAlpha=1;
+   p.img.style.opacity=String(ink);p.cover.style.opacity=progress>=.999||paused?'0':'1';
+   if(!paused&&progress>.001&&progress<.999){
+    const envelope=smooth(progress/.16)*(1-smooth((progress-.48)/.52));
+    for(const dot of p.points){
+     const phase=clamp((progress-dot.delay)/.7),arrival=phase*phase*phase*(phase*(phase*6-15)+10);
+     const spread=1-arrival;
+     cc.globalAlpha=envelope*dot.alpha;cc.fillStyle=dot.color;
+     cc.beginPath();cc.arc(dot.x+dot.dx*spread,dot.y+dot.dy*spread,dot.radius*(.85+.4*arrival),0,Math.PI*2);cc.fill();
+    }
+    cc.globalAlpha=1;
    }
   }
   p.hover+=((p.active&&!paused?1:0)-p.hover)*Math.min(1,dt*7);p.mx+=(p.tx-p.mx)*Math.min(1,dt*6);p.my+=(p.ty-p.my)*Math.min(1,dt*6);
   const gc=p.grid.getContext('2d');gc.clearRect(0,0,p.w,p.h);if(p.hover<.004||paused)return settling;
   const radius=Math.min(195,p.w*.45),cx=p.mx*p.w,cy=p.my*p.h;const spacing=11;
-  for(let y=0;y<p.h;y+=spacing)for(let x=0;x<p.w;x+=spacing){const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)/radius;if(d>1.2)continue;const strength=Math.max(0,1-d/1.2);const wave=Math.sin(d*9-time*.7)*3*strength*p.hover;const dot=1.1+strength*.8;gc.fillStyle=hash(x*7+y*11)>.5?'#26e5a2':'#388dff';gc.globalAlpha=strength*.64*p.hover;gc.beginPath();gc.arc(x+(dx/(radius||1))*wave,y+wave,dot,0,Math.PI*2);gc.fill()}
+  for(let y=0;y<p.h;y+=spacing)for(let x=0;x<p.w;x+=spacing){const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)/radius;if(d>1.2)continue;const strength=Math.max(0,1-d/1.2);const wave=Math.sin(d*9-time*.7)*3*strength*p.hover;const dot=1.1+strength*.8;gc.fillStyle=hash(x*7+y*11)>.5?'#26e5a2':'#388dff';gc.globalAlpha=strength*.64*p.hover*smooth((progress-.25)/.55);gc.beginPath();gc.arc(x+(dx/(radius||1))*wave,y+wave,dot,0,Math.PI*2);gc.fill()}
   gc.globalAlpha=1;return true;
  }
  function draw(now){
