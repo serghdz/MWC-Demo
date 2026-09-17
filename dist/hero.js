@@ -9,7 +9,7 @@ function showFallback(){const fallback=host.querySelector('.art-fallback');fallb
 try{await startHero()}catch(error){console.error('The 3D hero could not load.',error);showFallback()}
 async function startHero(){
  // Start all transfers before environment lighting and shader preparation.
- const assets=Promise.all([new GLTFLoader().loadAsync('./assets/cross.glb'),fetch('./assets/land.json').then(r=>{if(!r.ok)throw Error('Map unavailable');return r.json()}),new FontLoader().loadAsync('./assets/helvetiker_regular.typeface.json')]);
+ const assets=Promise.all([new GLTFLoader().loadAsync('./assets/cross.glb'),fetch('./assets/land.json').then(r=>{if(!r.ok)throw Error('Map unavailable');return r.json()}),new FontLoader().loadAsync('./assets/helvetiker_bold.typeface.json')]);
  const [gltf,land,font]=await assets;
  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'low-power'});
  renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setClearColor(0,0);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;renderer.outputColorSpace=THREE.SRGBColorSpace;
@@ -36,14 +36,15 @@ async function startHero(){
  const globeVeil=new THREE.Mesh(new THREE.SphereGeometry(2.10,48,32),new THREE.MeshBasicMaterial({color:0x174756,transparent:true,opacity:.07,depthWrite:false}));globeHolder.add(globeVeil);
  const ring=new THREE.Mesh(new THREE.TorusGeometry(2.30,.048,20,200),new THREE.MeshStandardMaterial({color:0xc1c7ca,metalness:1,roughness:.23,envMapIntensity:1.55,transparent:true,opacity:1}));ring.rotation.x=.10;ring.position.z=-.06;root.add(ring);
  // This group never inherits the emblem's rotation or pointer tilt.
- const orbit=new THREE.Group();scene.add(orbit);const phrase='MISSION WORLD CHURCH   MISSION WORLD CHURCH   ';const letters=[],glyphCache=new Map();
+ const orbit=new THREE.Group();scene.add(orbit);const words=[];let widestWord=0;
  const faceMaterial=new THREE.MeshStandardMaterial({color:0xe5edef,metalness:.55,roughness:.25,envMapIntensity:1.2,transparent:true,depthWrite:false});
  const edgeMaterial=new THREE.MeshStandardMaterial({color:0x617b8a,metalness:.72,roughness:.3,envMapIntensity:1.2,transparent:true,depthWrite:false});
- for(const ch of phrase){if(ch===' '){letters.push(null);continue}if(!glyphCache.has(ch)){const geometry=new TextGeometry(ch,{font,size:.245,height:.045,curveSegments:5,bevelEnabled:true,bevelThickness:.004,bevelSize:.003,bevelSegments:2});geometry.center();glyphCache.set(ch,geometry)}const letter=new THREE.Mesh(glyphCache.get(ch),[faceMaterial.clone(),edgeMaterial.clone()]);orbit.add(letter);letters.push(letter)}
- // Letter geometry is permanently upright, facing the fixed camera (+Z).
+ // Each whole word is one rigid mesh: its letters keep the font's natural spacing.
+ for(const text of ['MISSION','WORLD','CHURCH']){const geometry=new TextGeometry(text,{font,size:.255,height:.045,curveSegments:5,bevelEnabled:true,bevelThickness:.004,bevelSize:.003,bevelSegments:2});geometry.center();geometry.computeBoundingBox();widestWord=Math.max(widestWord,geometry.boundingBox.max.x-geometry.boundingBox.min.x);const word=new THREE.Mesh(geometry,[faceMaterial.clone(),edgeMaterial.clone()]);word.name=text;orbit.add(word);words.push(word)}
+ // Word geometry is permanently upright, facing the fixed camera (+Z).
  // Animate only position and uniform scale; no lookAt, Euler or quaternion updates.
  const orbitPosition=new THREE.Vector3();
- function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.position.z=w/h<.85?13.9:10.1;camera.updateProjectionMatrix()}
+ function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;const halfFrustum=camera.aspect*Math.tan(THREE.MathUtils.degToRad(camera.fov/2));camera.position.z=Math.max(10.1,Math.hypot(2.9/halfFrustum,2.6)+(widestWord*.5+.18)/halfFrustum);camera.updateProjectionMatrix()}
  new ResizeObserver(resize).observe(host);resize();
  let visible=true;new IntersectionObserver(es=>{visible=es[0].isIntersecting},{rootMargin:'150px'}).observe(host);
  let mx=0,my=0;host.addEventListener('pointermove',e=>{const r=host.getBoundingClientRect();mx=((e.clientX-r.left)/r.width-.5)*.24;my=((e.clientY-r.top)/r.height-.5)*.09});host.addEventListener('pointerleave',()=>{mx=0;my=0});
@@ -55,7 +56,7 @@ async function startHero(){
   root.scale.setScalar(1-scatter*.055);crossHolder.rotation.y=.06;crossHolder.position.y=0;
   globeVeil.material.opacity=.07*(1-scatter);ring.material.opacity=1-scatter*.38;ring.rotation.set(.18+Math.sin(t*.27)*.34,t*.16,Math.sin(t*.19)*.24);
   root.updateMatrixWorld(true);
-  letters.forEach((letter,i)=>{if(!letter)return;const a=Math.PI-i/letters.length*Math.PI*2-t*.075;orbitPosition.set(Math.cos(a)*2.9,-Math.sin(a)*.43+.02,Math.sin(a)*2.60);letter.position.copy(orbitPosition.applyMatrix4(root.matrixWorld));letter.scale.setScalar(root.scale.x);const opacity=(.08+.92*THREE.MathUtils.smoothstep(Math.sin(a),-.15,.60))*(1-scatter*.6);letter.material.forEach(m=>m.opacity=opacity)});
+  words.forEach((word,i)=>{const a=Math.PI*5/6-i/words.length*Math.PI*2-t*.075;orbitPosition.set(Math.cos(a)*2.9,-Math.sin(a)*.43+.02,Math.sin(a)*2.60);word.position.copy(orbitPosition.applyMatrix4(root.matrixWorld));word.scale.setScalar(root.scale.x);const front=THREE.MathUtils.smoothstep(Math.sin(a),.02,.40);word.visible=front>.005;word.material.forEach(m=>m.opacity=front*(1-scatter*.6))});
  }
  function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.05);last=now;if(!visible||document.hidden)return;if(!reduced())t+=dt;pose(dt);renderer.render(scene,camera)}
  pose(1);renderer.compile(scene,camera);renderer.render(scene,camera);
