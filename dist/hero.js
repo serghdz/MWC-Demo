@@ -1,0 +1,40 @@
+import * as THREE from 'three';
+import {GLTFLoader} from './assets/vendor/GLTFLoader.js';
+import {RoomEnvironment} from './assets/vendor/RoomEnvironment.js';
+const host=document.querySelector('.hero-art'),canvas=document.querySelector('#hero-canvas');
+const reduced=()=>window.missionMotion?.paused??matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+try{await startHero()}catch(error){console.error('The 3D hero could not load; showing the model image.',error);canvas.hidden=true;host.classList.remove('loaded')}
+async function startHero(){
+ const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'low-power'});
+ renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setClearColor(0,0);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;renderer.outputColorSpace=THREE.SRGBColorSpace;
+ const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(34,1,.1,100);camera.position.set(0,.1,10.8);
+ const root=new THREE.Group();scene.add(root);root.position.y=.15;
+ const pmrem=new THREE.PMREMGenerator(renderer);const environment=pmrem.fromScene(new RoomEnvironment(),.05);scene.environment=environment.texture;pmrem.dispose();
+ const key=new THREE.DirectionalLight(0xffffff,3.6);key.position.set(-3,4,6);scene.add(key);
+ const fill=new THREE.DirectionalLight(0xb9d8ef,1.4);fill.position.set(5,1,3);scene.add(fill);
+ scene.add(new THREE.HemisphereLight(0xc1dcf2,0x162126,.75));
+ const [gltf,land]=await Promise.all([new GLTFLoader().loadAsync('./assets/cross.glb'),fetch('./assets/land.json').then(r=>{if(!r.ok)throw Error('Map unavailable');return r.json()})]);
+ const cross=gltf.scene;const box=new THREE.Box3().setFromObject(cross),center=box.getCenter(new THREE.Vector3());
+ cross.position.sub(center);const crossHolder=new THREE.Group();crossHolder.add(cross);crossHolder.scale.setScalar(3.95/.16);crossHolder.position.z=0;root.add(crossHolder);
+ cross.traverse(o=>{if(o.isMesh){const ball=o.name.toLowerCase().includes('ball');o.material=new THREE.MeshStandardMaterial({color:ball?0xd1d3d3:0xb1b6b9,metalness:1,roughness:ball?.17:.29,envMapIntensity:1.45});if(!ball){o.material.onBeforeCompile=shader=>{shader.vertexShader='varying vec3 vBrushed;\n'+shader.vertexShader;shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvBrushed=position;');shader.fragmentShader='varying vec3 vBrushed;\n'+shader.fragmentShader;shader.fragmentShader=shader.fragmentShader.replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nfloat grain=sin(vBrushed.z*210.0+sin(vBrushed.x*2.0))*sin(vBrushed.z*381.0);roughnessFactor+=grain*0.028;');};}}});
+ const polygons=land.features.flatMap(f=>f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates).map(p=>p[0]);
+ const bounds=polygons.map(p=>({p,minX:Math.min(...p.map(v=>v[0])),maxX:Math.max(...p.map(v=>v[0])),minY:Math.min(...p.map(v=>v[1])),maxY:Math.max(...p.map(v=>v[1]))}));
+ function isLand(x,y){return bounds.some(b=>{if(x<b.minX||x>b.maxX||y<b.minY||y>b.maxY)return false;let c=false;for(let i=0,j=b.p.length-1;i<b.p.length;j=i++){const a=b.p[i],d=b.p[j];if(((a[1]>y)!==(d[1]>y))&&(x<(d[0]-a[0])*(y-a[1])/(d[1]-a[1])+a[0]))c=!c}return c})}
+ const positions=[],colors=[],sizes=[],seeds=[];const mint=new THREE.Color('#70e5ae'),blue=new THREE.Color('#527ff1'),ocean=new THREE.Color('#1d5263');
+ for(let lat=-78;lat<82;lat+=2.3){const phi=lat*Math.PI/180,cos=Math.cos(phi);const step=2.5/Math.max(.24,cos);for(let lon=-180;lon<180;lon+=step){const landPoint=isLand(lon,lat);if(!landPoint&&Math.round(lon/step)%3!==0)continue;const theta=(lon+95)*Math.PI/180;positions.push(2.12*cos*Math.sin(theta),2.12*Math.sin(phi),2.12*cos*Math.cos(theta));const color=landPoint?mint.clone().lerp(blue,clamp((lon+100)/230)):ocean;colors.push(color.r,color.g,color.b);sizes.push(landPoint?2.25:1.1);seeds.push(Math.sin(lat*12+lon*5)*.5+.5)}}
+ const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));geo.setAttribute('aSize',new THREE.Float32BufferAttribute(sizes,1));geo.setAttribute('aSeed',new THREE.Float32BufferAttribute(seeds,1));
+ const material=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:{value:0},uScatter:{value:0},uPixelRatio:{value:Math.min(devicePixelRatio,1.75)}},vertexShader:`attribute vec3 color;attribute float aSize;attribute float aSeed;uniform float uTime;uniform float uScatter;uniform float uPixelRatio;varying vec3 vColor;varying float vAlpha;void main(){vec3 p=position;float s=uScatter*uScatter;p.x+=sin(aSeed*48.)*s*4.;p.y-=s*(3.+aSeed*5.);p.z+=cos(aSeed*29.)*s*2.;p+=normalize(position)*sin(uTime*.7+aSeed*14.)*.018;vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;gl_PointSize=aSize*uPixelRatio*clamp(10./-mv.z,.65,1.5);vColor=color;vAlpha=(.36+.64*smoothstep(-1.2,1.3,position.z))*(1.-uScatter*.85);}`,fragmentShader:`varying vec3 vColor;varying float vAlpha;void main(){float d=length(gl_PointCoord-vec2(.5));if(d>.5)discard;gl_FragColor=vec4(vColor,(1.-smoothstep(.28,.5,d))*vAlpha);}`});
+ const globe=new THREE.Points(geo,material);const globeHolder=new THREE.Group();globeHolder.add(globe);root.add(globeHolder);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(2.30,.048,20,200),new THREE.MeshStandardMaterial({color:0xc1c7ca,metalness:1,roughness:.23,envMapIntensity:1.55,transparent:true,opacity:1}));ring.rotation.x=.10;ring.position.z=-.06;root.add(ring);
+ const orbit=new THREE.Group();root.add(orbit);const phrase='MISSION WORLD CHURCH  ·  MISSION WORLD CHURCH  ·  ';const letters=[];
+ for(const ch of phrase){const c=document.createElement('canvas');c.width=96;c.height=112;const ctx=c.getContext('2d');ctx.font='600 66px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#e4ecee';ctx.fillText(ch,48,56);const texture=new THREE.CanvasTexture(c);texture.colorSpace=THREE.SRGBColorSpace;const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map:texture,transparent:true,depthWrite:false,opacity:.8}));sprite.scale.set(.22,.26,1);orbit.add(sprite);letters.push(sprite)}
+ function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;camera.position.z=w/h<.85?13.2:9.6;camera.updateProjectionMatrix()}
+ new ResizeObserver(resize).observe(host);resize();
+ let visible=true;new IntersectionObserver(es=>{visible=es[0].isIntersecting},{rootMargin:'150px'}).observe(host);
+ let mx=0,my=0;host.addEventListener('pointermove',e=>{const r=host.getBoundingClientRect();mx=((e.clientX-r.left)/r.width-.5)*.24;my=((e.clientY-r.top)/r.height-.5)*.09});host.addEventListener('pointerleave',()=>{mx=0;my=0});
+ let t=0,last=performance.now(),scatter=0;
+ function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.05);last=now;if(!visible||document.hidden)return;const paused=reduced();if(!paused)t+=dt;const progress=clamp(scrollY/(document.querySelector('.hero').offsetHeight*.9));scatter+=(paused?0:progress-scatter)*Math.min(1,dt*5);if(paused)scatter=0;material.uniforms.uTime.value=t;material.uniforms.uScatter.value=scatter;globeHolder.rotation.y=t*.065;root.rotation.y+=((paused?0:mx)-root.rotation.y)*dt*3;root.rotation.x+=((paused?0:my)-root.rotation.x)*dt*3;crossHolder.rotation.y=.06+Math.sin(t*.22)*.035;crossHolder.position.y=paused?0:Math.sin(t*.5)*.02;ring.material.opacity=1-scatter*.5;letters.forEach((s,i)=>{const a=Math.PI-i/letters.length*Math.PI*2-t*.08;s.position.set(Math.cos(a)*2.78,Math.sin(a)*-.38+.02,Math.sin(a)*2.52);s.material.opacity=(.16+.84*clamp((Math.sin(a)+.25)/1.25))*(1-scatter*.8)});renderer.render(scene,camera)}
+ renderer.render(scene,camera);host.classList.add('loaded');requestAnimationFrame(frame);
+ canvas.addEventListener('webglcontextlost',()=>host.classList.remove('loaded'));
+}
