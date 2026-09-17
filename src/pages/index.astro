@@ -1,6 +1,10 @@
 ---
 import "../styles/global.css";
 import { assetUrl } from "../lib/asset-url.js";
+const shareTitle = "Mission World Church — Live the Gospel Together";
+const shareDescription = "Cultivating the human experience by living out the mission of the Gospel together. Join us in Houston on Sundays at 12 PM.";
+const shareBase = Astro.site ? new URL(import.meta.env.BASE_URL, Astro.site) : new URL("https://serghdz.github.io/MWC-Demo/");
+const shareImage = new URL("og.png", shareBase).href;
 ---
 <!doctype html>
 <html lang="en">
@@ -31,6 +35,22 @@ import { assetUrl } from "../lib/asset-url.js";
       addEventListener('pagehide', () => { history.scrollRestoration = previousRestoration; }, { once: true });
     })();
   </script>
+  <link rel="canonical" href={shareBase.href} />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Mission World Church" />
+  <meta property="og:title" content={shareTitle} />
+  <meta property="og:description" content={shareDescription} />
+  <meta property="og:url" content={shareBase.href} />
+  <meta property="og:image" content={shareImage} />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="1730" />
+  <meta property="og:image:height" content="909" />
+  <meta property="og:image:alt" content="Mission World Church silver cross and ring inside a blue and green particle globe. Live the Gospel Together. Mark 16:15." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content={shareTitle} />
+  <meta name="twitter:description" content={shareDescription} />
+  <meta name="twitter:image" content={shareImage} />
+  <meta name="twitter:image:alt" content="Mission World Church hero banner with silver cross, particle globe and metal ring." />
   <meta name="theme-color" content="#071219">
   <title>Mission World Church — Live the Gospel Together</title>
   <meta name="description" content="Cultivating the human experience by living out the mission of the Gospel together. Join Mission World Church in Houston on Sundays at 12 PM.">
