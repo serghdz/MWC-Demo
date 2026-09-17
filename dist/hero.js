@@ -38,7 +38,7 @@ async function startHero(){
  const ring=new THREE.Mesh(new THREE.TorusGeometry(2.30,.048,20,200),new THREE.MeshStandardMaterial({color:0xc1c7ca,metalness:1,roughness:.23,envMapIntensity:1.55,transparent:true,opacity:1}));ring.rotation.x=.10;ring.position.z=-.06;root.add(ring);
  // This group never inherits the emblem's rotation or pointer tilt.
  const orbit=new THREE.Group();scene.add(orbit);
- const name='MISSION WORLD CHURCH',fontSize=.245,tracking=.060,orbitRadius=2.52,orbitDepth=2.52;
+ const name='MISSION WORLD CHURCH',fontSize=.245,tracking=.090,orbitRadius=2.52,orbitDepth=2.52;
  const glyphs=[],letters=[],glyphCache=new Map();let nameWidth=0,widestLetter=0;
  const faceMaterial=new THREE.MeshStandardMaterial({color:0xe5edef,metalness:.55,roughness:.25,envMapIntensity:1.2,transparent:true,depthWrite:false});
  const edgeMaterial=new THREE.MeshStandardMaterial({color:0x617b8a,metalness:.72,roughness:.3,envMapIntensity:1.2,transparent:true,depthWrite:false});
