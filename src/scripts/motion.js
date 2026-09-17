@@ -1,3 +1,4 @@
+import { followReveal } from '../lib/scroll-motion.js';
 window.missionMotion={paused:matchMedia('(prefers-reduced-motion: reduce)').matches};
 const menu=document.querySelector('.menu-toggle'),nav=document.querySelector('#navigation');
 menu.addEventListener('click',()=>{const open=menu.getAttribute('aria-expanded')!=='true';menu.setAttribute('aria-expanded',String(open));menu.setAttribute('aria-label',open?'Close navigation':'Open navigation');nav.classList.toggle('open',open)});
@@ -109,7 +110,7 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{win
   if(y>vh+100||y+p.h< -100){p.progress=y<0?1:0;p.last=-1;return false}
   const desired=paused?1:clamp((vh*.96-y)/Math.min(vh*.68,p.h*.95));
   if(p.progress===undefined||paused)p.progress=desired;
-  else p.progress+=(desired-p.progress)*(1-Math.exp(-dt/.11));
+  else p.progress=followReveal(p.progress,desired,dt,.075);
   const settling=Math.abs(desired-p.progress)>.0008;if(!settling)p.progress=desired;
   const progress=p.progress,ink=paused?1:smooth((progress-.18)/.72);
   const cc=p.cover.getContext('2d');
@@ -128,16 +129,17 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{win
    }
   }
   p.hover+=((p.active&&!paused?1:0)-p.hover)*Math.min(1,dt*7);p.mx+=(p.tx-p.mx)*Math.min(1,dt*6);p.my+=(p.ty-p.my)*Math.min(1,dt*6);
-  const gc=p.grid.getContext('2d');gc.clearRect(0,0,p.w,p.h);if(p.hover<.004||paused)return settling;
+  const gc=p.grid.getContext('2d');if(p.hover<.004||paused){if(p.gridPainted){gc.clearRect(0,0,p.w,p.h);p.gridPainted=false}return settling}gc.clearRect(0,0,p.w,p.h);p.gridPainted=true;
   const radius=Math.min(195,p.w*.45),cx=p.mx*p.w,cy=p.my*p.h;const spacing=11;
-  for(let y=0;y<p.h;y+=spacing)for(let x=0;x<p.w;x+=spacing){const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)/radius;if(d>1.2)continue;const strength=Math.max(0,1-d/1.2);const wave=Math.sin(d*9-time*.7)*3*strength*p.hover;const dot=1.1+strength*.8;gc.fillStyle=hash(x*7+y*11)>.5?'#26e5a2':'#388dff';gc.globalAlpha=strength*.64*p.hover*smooth((progress-.25)/.55);gc.beginPath();gc.arc(x+(dx/(radius||1))*wave,y+wave,dot,0,Math.PI*2);gc.fill()}
+  const left=Math.max(0,Math.floor((cx-radius*1.2)/spacing)*spacing),right=Math.min(p.w,cx+radius*1.2),top=Math.max(0,Math.floor((cy-radius*1.2)/spacing)*spacing),bottom=Math.min(p.h,cy+radius*1.2);
+  for(let y=top;y<bottom;y+=spacing)for(let x=left;x<right;x+=spacing){const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)/radius;if(d>1.2)continue;const strength=Math.max(0,1-d/1.2);const wave=Math.sin(d*9-time*.7)*3*strength*p.hover;const dot=1.1+strength*.8;gc.fillStyle=hash(x*7+y*11)>.5?'#26e5a2':'#388dff';gc.globalAlpha=strength*.64*p.hover*smooth((progress-.25)/.55);gc.beginPath();gc.arc(x+(dx/(radius||1))*wave,y+wave,dot,0,Math.PI*2);gc.fill()}
   gc.globalAlpha=1;return true;
  }
  function draw(now){
   raf=0;if(!measured)return;
-  const dt=Math.min((now-last)/1000,.05)||.016;last=now;
+  const dt=Math.min((now-last)/1000,.12)||.016;last=now;
   const paused=window.missionMotion.paused;scroll=scrollY;
-  const follow=1-Math.exp(-dt/0.085);let settling=false;
+  let settling=false;
   ctx.clearRect(0,0,vw,vh);
   for(const group of groups){
    const gy=group.top-scroll;
@@ -150,9 +152,9 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{win
     const y=word.y-scroll,across=clamp((word.x-group.x)/Math.max(1,group.width));
     const desired=paused?1:clamp((vh*.96-y)/Math.min(vh*.55,420)-across*.075);
     if(word.progress===null||paused)word.progress=desired;
-    else{word.progress+=(desired-word.progress)*follow;if(Math.abs(desired-word.progress)<.0008)word.progress=desired;else settling=true}
+    else{word.progress=followReveal(word.progress,desired,dt);if(Math.abs(desired-word.progress)<.0008)word.progress=desired;else settling=true}
     const p=word.progress,ink=smooth((p-.32)/.68),lift=(1-ink)*4;
-    if(Math.abs(p-word.last)>.0005||p===0||p===1){
+    if(Math.abs(p-word.last)>.0005||((p===0||p===1)&&p!==word.last)){
      word.el.style.opacity=String(.06+ink*.94);
      word.el.style.filter=ink>.999?'none':`blur(${((1-ink)*.65).toFixed(3)}px)`;
      word.el.style.transform=ink>.999?'none':`translateY(${lift.toFixed(3)}px)`;word.last=p;
