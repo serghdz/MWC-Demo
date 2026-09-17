@@ -8,6 +8,17 @@ function setMotion(){const p=window.missionMotion.paused;document.body.classList
 motionButton.addEventListener('click',()=>{window.missionMotion.paused=!window.missionMotion.paused;setMotion()});
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{window.missionMotion.paused=e.matches;setMotion()});setMotion();
 
+// A short native sticky interval uses normal wheel, touch, keyboard and scrollbar input.
+// No gesture interception: scrolling back up also reconstructs the globe naturally.
+(()=>{
+ const track=document.querySelector('#hero-scroll'),hero=track?.querySelector('.hero');if(!track||!hero)return;
+ const copy=hero.querySelector('.hero-content'),cue=hero.querySelector('.hero-explore');let start=0,hold=0,lastHeight=0;
+ const clamp=x=>Math.max(0,Math.min(1,x));window.missionHeroScroll={progress:0};
+ function update(){const p=hold?clamp((scrollY-start)/hold):0;window.missionHeroScroll.progress=p;const fade=clamp((p-.55)/.45);copy.style.opacity=String(1-fade*.3);copy.style.transform=`translateY(${-fade*10}px)`;cue.style.opacity=String(1-clamp(p*2));}
+ function measure(){const height=hero.offsetHeight;start=track.getBoundingClientRect().top+scrollY;const enabled=window.missionHeroReady&&!window.missionMotion.paused&&height<=innerHeight+2;hold=enabled?Math.min(380,Math.max(200,innerHeight*(innerWidth<700?.28:.36))):0;track.classList.toggle('is-pinned',!!hold);const total=height+hold;track.style.height=`${total}px`;update();if(total!==lastHeight){lastHeight=total;window.dispatchEvent(new Event('hero-layout'))}}
+ addEventListener('scroll',update,{passive:true});addEventListener('resize',measure);addEventListener('motionchange',measure);addEventListener('hero-ready',measure);measure();
+})();
+
 // A quiet field of particle stars spans the full banner, independent of the emblem.
 (()=>{const canvas=document.querySelector('#star-canvas'),hero=document.querySelector('.hero');if(!canvas)return;const ctx=canvas.getContext('2d');if(!ctx)return;let w=0,h=0,t=0,last=0,visible=true;const stars=Array.from({length:185},(_,i)=>({x:((Math.sin(i*87.3+1)*43758.5)%1+1)%1,y:((Math.sin(i*19.7+4)*43758.5)%1+1)%1,r:.6+(i%5)*.24,phase:i*2.41,speed:.02+(i%4)*.007}));function resize(){w=hero.clientWidth;h=hero.clientHeight;const d=Math.min(devicePixelRatio,1.5);canvas.width=w*d;canvas.height=h*d;ctx.setTransform(d,0,0,d,0,0)}new ResizeObserver(resize).observe(hero);new IntersectionObserver(e=>visible=e[0].isIntersecting).observe(hero);function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.05);last=now;if(!visible||document.hidden)return;if(!window.missionMotion.paused)t+=dt;ctx.clearRect(0,0,w,h);for(const s of stars){const x=(s.x*w+Math.sin(t*s.speed*2+s.phase)*24+t*(1.3+s.speed*9)+w)%w,y=(s.y*h-t*(2+s.speed*24)+h*10)%h;ctx.globalAlpha=.22+(.5+.5*Math.sin(t*.60+s.phase))*.43;ctx.fillStyle=s.phase%2>1?'#a8c6db':'#bce4da';ctx.beginPath();ctx.arc(x,y,s.r,0,Math.PI*2);ctx.fill()}ctx.globalAlpha=1}resize();requestAnimationFrame(frame)})();
 
@@ -53,8 +64,8 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{win
   }
   p.hover+=((p.active&&!paused?1:0)-p.hover)*Math.min(1,dt*7);p.mx+=(p.tx-p.mx)*Math.min(1,dt*6);p.my+=(p.ty-p.my)*Math.min(1,dt*6);
   const gc=p.grid.getContext('2d');gc.clearRect(0,0,p.w,p.h);if(p.hover<.004||paused)return false;
-  const radius=Math.min(180,p.w*.43),cx=p.mx*p.w,cy=p.my*p.h;const spacing=12;
-  for(let y=0;y<p.h;y+=spacing)for(let x=0;x<p.w;x+=spacing){const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)/radius;if(d>1.2)continue;const strength=Math.max(0,1-d/1.2);const wave=Math.sin(d*9-time*.7)*3*strength*p.hover;const dot=1+strength*.55;gc.fillStyle=x/p.w<.5?'#82e1bc':'#75a9e5';gc.globalAlpha=strength*.43*p.hover;gc.beginPath();gc.arc(x+(dx/(radius||1))*wave,y+wave,dot,0,Math.PI*2);gc.fill()}
+  const radius=Math.min(195,p.w*.45),cx=p.mx*p.w,cy=p.my*p.h;const spacing=11;
+  for(let y=0;y<p.h;y+=spacing)for(let x=0;x<p.w;x+=spacing){const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)/radius;if(d>1.2)continue;const strength=Math.max(0,1-d/1.2);const wave=Math.sin(d*9-time*.7)*3*strength*p.hover;const dot=1.1+strength*.8;gc.fillStyle=hash(x*7+y*11)>.5?'#26e5a2':'#388dff';gc.globalAlpha=strength*.64*p.hover;gc.beginPath();gc.arc(x+(dx/(radius||1))*wave,y+wave,dot,0,Math.PI*2);gc.fill()}
   gc.globalAlpha=1;return true;
  }
  function draw(now){raf=0;const dt=Math.min((now-last)/1000,.05)||.016;last=now;const paused=window.missionMotion.paused;scroll+=(target-scroll)*Math.min(1,dt*12);if(Math.abs(target-scroll)<.08)scroll=target;
@@ -70,6 +81,6 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{win
   if(Math.abs(scroll-target)>.08||hover)wake();
  }
  function wake(){if(!raf&&!document.hidden)raf=requestAnimationFrame(draw)}
- addEventListener('scroll',()=>{target=scrollY;wake()},{passive:true});addEventListener('resize',measure);addEventListener('motionchange',()=>{for(const g of groups)for(const w of g.words)w.last=-1;for(const p of photos)p.last=-1;wake()});document.addEventListener('visibilitychange',wake);
+ addEventListener('scroll',()=>{target=scrollY;wake()},{passive:true});addEventListener('resize',measure);addEventListener('hero-layout',measure);addEventListener('motionchange',()=>{for(const g of groups)for(const w of g.words)w.last=-1;for(const p of photos)p.last=-1;wake()});document.addEventListener('visibilitychange',wake);
  measure();document.fonts.ready.then(measure);
 })();
