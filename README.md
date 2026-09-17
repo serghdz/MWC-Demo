@@ -2,6 +2,8 @@
 
 A standalone homepage concept using the church's custom Blender cross, a geographic particle globe, scroll-driven particle text and photo reveals, and pointer/focus photo effects.
 
+The name now uses wider tracking on a tighter orbit just outside the metal ring. The globe dissolve renders in a transparent viewport layer so it can continue across the first section boundary without hero clipping. A short sticky opening leads into a scroll-driven tail that fades particles fully to zero; fast swipes do not leave a delayed partial dissolve, and mobile browser-bar resizing does not reset the scroll range.
+
 The site is in `dist/`. Serve that directory over HTTP. No framework build is required. The real church website is unchanged; existing church links open its connection, prayer and giving pages.
 
 `hero.js` contains the Three.js scene; `motion.js` controls scroll reveals and photo interactions; `style.css` defines responsive layouts. A short native sticky interval starts the globe's particle dissolve before the hero scrolls away, without intercepting touch, wheel, or keyboard input. Scrolling back reverses the dissolve. The Pause motion button and operating-system reduced-motion setting disable ambient movement and skip this interval. Text remains normal accessible HTML.

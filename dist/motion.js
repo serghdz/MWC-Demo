@@ -12,10 +12,10 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{win
 // No gesture interception: scrolling back up also reconstructs the globe naturally.
 (()=>{
  const track=document.querySelector('#hero-scroll'),hero=track?.querySelector('.hero');if(!track||!hero)return;
- const copy=hero.querySelector('.hero-content'),cue=hero.querySelector('.hero-explore');let start=0,hold=0,lastHeight=0;
- const clamp=x=>Math.max(0,Math.min(1,x));window.missionHeroScroll={progress:0};
- function update(){const p=hold?clamp((scrollY-start)/hold):0;window.missionHeroScroll.progress=p;const fade=clamp((p-.55)/.45);copy.style.opacity=String(1-fade*.3);copy.style.transform=`translateY(${-fade*10}px)`;cue.style.opacity=String(1-clamp(p*2));}
- function measure(){const height=hero.offsetHeight;start=track.getBoundingClientRect().top+scrollY;const enabled=window.missionHeroReady&&!window.missionMotion.paused&&height<=innerHeight+2;hold=enabled?Math.min(380,Math.max(200,innerHeight*(innerWidth<700?.28:.36))):0;track.classList.toggle('is-pinned',!!hold);const total=height+hold;track.style.height=`${total}px`;update();if(total!==lastHeight){lastHeight=total;window.dispatchEvent(new Event('hero-layout'))}}
+ const copy=hero.querySelector('.hero-content'),cue=hero.querySelector('.hero-explore');let start=0,hold=0,tail=0,height=0,lastHeight=0;
+ const clamp=x=>Math.max(0,Math.min(1,x));window.missionHeroScroll={progress:0,travel:0,exit:0,active:false};
+ function update(){const distance=Math.max(0,scrollY-start),travel=hold?Math.max(0,distance-hold):0;const p=hold?clamp(distance/(hold+tail)):0;Object.assign(window.missionHeroScroll,{progress:p,travel:Math.min(travel,tail),exit:hold?clamp(travel/(height*.48)):0,active:!!hold&&scrollY>=start-height&&distance<hold+tail});const fade=clamp((p-.55)/.45);copy.style.opacity=String(1-fade*.3);copy.style.transform=`translateY(${-fade*10}px)`;cue.style.opacity=String(1-clamp(p*2));}
+ function measure(){height=hero.offsetHeight;start=track.getBoundingClientRect().top+scrollY;const enabled=window.missionHeroReady&&!window.missionMotion.paused;hold=enabled?Math.min(500,Math.max(280,height*.42)):0;tail=enabled?height*.65:0;track.classList.toggle('is-pinned',!!hold);const total=height+hold;track.style.height=`${total}px`;update();if(total!==lastHeight){lastHeight=total;window.dispatchEvent(new Event('hero-layout'))}}
  addEventListener('scroll',update,{passive:true});addEventListener('resize',measure);addEventListener('motionchange',measure);addEventListener('hero-ready',measure);measure();
 })();
 
