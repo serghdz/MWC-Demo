@@ -36,15 +36,20 @@ async function startHero(){
  const globeVeil=new THREE.Mesh(new THREE.SphereGeometry(2.10,48,32),new THREE.MeshBasicMaterial({color:0x174756,transparent:true,opacity:.07,depthWrite:false}));globeHolder.add(globeVeil);
  const ring=new THREE.Mesh(new THREE.TorusGeometry(2.30,.048,20,200),new THREE.MeshStandardMaterial({color:0xc1c7ca,metalness:1,roughness:.23,envMapIntensity:1.55,transparent:true,opacity:1}));ring.rotation.x=.10;ring.position.z=-.06;root.add(ring);
  // This group never inherits the emblem's rotation or pointer tilt.
- const orbit=new THREE.Group();scene.add(orbit);const words=[];let widestWord=0;
+ const orbit=new THREE.Group();scene.add(orbit);
+ const name='MISSION WORLD CHURCH',fontSize=.255,tracking=.032,orbitRadius=2.9,orbitDepth=2.6;
+ const glyphs=[],letters=[],glyphCache=new Map();let nameWidth=0,widestLetter=0;
  const faceMaterial=new THREE.MeshStandardMaterial({color:0xe5edef,metalness:.55,roughness:.25,envMapIntensity:1.2,transparent:true,depthWrite:false});
  const edgeMaterial=new THREE.MeshStandardMaterial({color:0x617b8a,metalness:.72,roughness:.3,envMapIntensity:1.2,transparent:true,depthWrite:false});
- // Each whole word is one rigid mesh: its letters keep the font's natural spacing.
- for(const text of ['MISSION','WORLD','CHURCH']){const geometry=new TextGeometry(text,{font,size:.255,height:.045,curveSegments:5,bevelEnabled:true,bevelThickness:.004,bevelSize:.003,bevelSegments:2});geometry.center();geometry.computeBoundingBox();widestWord=Math.max(widestWord,geometry.boundingBox.max.x-geometry.boundingBox.min.x);const word=new THREE.Mesh(geometry,[faceMaterial.clone(),edgeMaterial.clone()]);word.name=text;orbit.add(word);words.push(word)}
- // Word geometry is permanently upright, facing the fixed camera (+Z).
- // Animate only position and uniform scale; no lookAt, Euler or quaternion updates.
- const orbitPosition=new THREE.Vector3();
- function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;const halfFrustum=camera.aspect*Math.tan(THREE.MathUtils.degToRad(camera.fov/2));camera.position.z=Math.max(10.1,Math.hypot(2.9/halfFrustum,2.6)+(widestWord*.5+.18)/halfFrustum);camera.updateProjectionMatrix()}
+ // Measure the complete name, including actual word spaces, before bending its baseline.
+ for(const ch of name){const advance=font.data.glyphs[ch].ha/font.data.resolution*fontSize;glyphs.push({ch,center:nameWidth+advance/2});nameWidth+=advance+tracking}nameWidth-=tracking;
+ for(let copy=0;copy<2;copy++)for(const glyph of glyphs){if(glyph.ch===' ')continue;
+  if(!glyphCache.has(glyph.ch)){const geometry=new TextGeometry(glyph.ch,{font,size:fontSize,height:.045,curveSegments:5,bevelEnabled:true,bevelThickness:.004,bevelSize:.003,bevelSegments:2});geometry.center();geometry.computeBoundingBox();widestLetter=Math.max(widestLetter,geometry.boundingBox.max.x-geometry.boundingBox.min.x);glyphCache.set(glyph.ch,geometry)}
+  const letter=new THREE.Mesh(glyphCache.get(glyph.ch),[faceMaterial.clone(),edgeMaterial.clone()]);letter.name=glyph.ch;letter.userData.angle=Math.PI/2+(nameWidth/2-glyph.center)/orbitRadius+copy*Math.PI;orbit.add(letter);letters.push(letter);
+ }
+ // Letters stay upright. Their projected width follows the curve's spacing at its sides.
+ const orbitPosition=new THREE.Vector3(),orbitTangent=new THREE.Vector3(),orbitTransform=new THREE.Matrix3();
+ function resize(){const w=host.clientWidth,h=host.clientHeight;renderer.setSize(w,h,false);camera.aspect=w/h;const halfFrustum=camera.aspect*Math.tan(THREE.MathUtils.degToRad(camera.fov/2));camera.position.z=Math.max(10.1,Math.hypot(orbitRadius/halfFrustum,orbitDepth)+(widestLetter*.5+.18)/halfFrustum);camera.updateProjectionMatrix()}
  new ResizeObserver(resize).observe(host);resize();
  let visible=true;new IntersectionObserver(es=>{visible=es[0].isIntersecting},{rootMargin:'150px'}).observe(host);
  let mx=0,my=0;host.addEventListener('pointermove',e=>{const r=host.getBoundingClientRect();mx=((e.clientX-r.left)/r.width-.5)*.24;my=((e.clientY-r.top)/r.height-.5)*.09});host.addEventListener('pointerleave',()=>{mx=0;my=0});
@@ -55,8 +60,17 @@ async function startHero(){
   root.rotation.y+=((paused?0:mx)-root.rotation.y)*dt*3;root.rotation.x+=((paused?0:my)-root.rotation.x)*dt*3;
   root.scale.setScalar(1-scatter*.055);crossHolder.rotation.y=.06;crossHolder.position.y=0;
   globeVeil.material.opacity=.07*(1-scatter);ring.material.opacity=1-scatter*.38;ring.rotation.set(.18+Math.sin(t*.27)*.34,t*.16,Math.sin(t*.19)*.24);
-  root.updateMatrixWorld(true);
-  words.forEach((word,i)=>{const a=Math.PI*5/6-i/words.length*Math.PI*2-t*.075;orbitPosition.set(Math.cos(a)*2.9,-Math.sin(a)*.43+.02,Math.sin(a)*2.60);word.position.copy(orbitPosition.applyMatrix4(root.matrixWorld));word.scale.setScalar(root.scale.x);const front=THREE.MathUtils.smoothstep(Math.sin(a),.02,.40);word.visible=front>.005;word.material.forEach(m=>m.opacity=front*(1-scatter*.6))});
+  root.updateMatrixWorld(true);orbitTransform.setFromMatrix4(root.matrixWorld);
+  letters.forEach(letter=>{
+   const a=letter.userData.angle-t*.075,sin=Math.sin(a),cos=Math.cos(a);
+   orbitPosition.set(cos*orbitRadius,-sin*.48+.02,sin*orbitDepth);letter.position.copy(orbitPosition.applyMatrix4(root.matrixWorld));
+   orbitTangent.set(-sin*orbitRadius,-cos*.48,cos*orbitDepth).applyMatrix3(orbitTransform);
+   const distance=camera.position.z-letter.position.z;
+   const facing=-(orbitTangent.x+(letter.position.x-camera.position.x)*orbitTangent.z/distance)/(orbitRadius*root.scale.x);
+   const front=THREE.MathUtils.smoothstep(facing,.24,.52);
+   letter.scale.set(root.scale.x*Math.max(.04,Math.min(1,facing))*.9,root.scale.x,root.scale.x);
+   letter.visible=front>.005;letter.material.forEach(m=>m.opacity=front*(1-scatter*.6));
+  });
  }
  function frame(now){requestAnimationFrame(frame);const dt=Math.min((now-last)/1000,.05);last=now;if(!visible||document.hidden)return;if(!reduced())t+=dt;pose(dt);renderer.render(scene,camera)}
  pose(1);renderer.compile(scene,camera);renderer.render(scene,camera);
