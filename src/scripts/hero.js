@@ -39,7 +39,7 @@ async function startHero(){
  geo.setAttribute('color',new THREE.InterleavedBufferAttribute(points,3,3));
  geo.setAttribute('aSize',new THREE.InterleavedBufferAttribute(points,1,6));
  geo.setAttribute('aSeed',new THREE.InterleavedBufferAttribute(points,1,7));
- const material=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:{value:0},uScatter:{value:0},uDrop:{value:0},uPixelRatio:{value:pixelRatio}},vertexShader:`attribute vec3 color;attribute float aSize;attribute float aSeed;uniform float uTime;uniform float uScatter;uniform float uDrop;uniform float uPixelRatio;varying vec3 vColor;varying float vAlpha;void main(){vec3 p=position;float s=uScatter*(.35+.65*uScatter);p*=1.+s*(1.5+aSeed*.65);p.x+=sin(aSeed*48.)*s*.85;p.y+=cos(aSeed*37.)*s*.65;p.z+=cos(aSeed*29.)*s*.35;p+=normalize(position)*sin(uTime*.7+aSeed*14.)*.018;vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;gl_Position.y-=uDrop*gl_Position.w;gl_PointSize=aSize*uPixelRatio*clamp(10./-mv.z,.65,1.5);vColor=color;vAlpha=(.40+.60*smoothstep(-1.2,1.3,position.z))*(1.-smoothstep(.28,1.,uScatter));}`,fragmentShader:`varying vec3 vColor;varying float vAlpha;void main(){float d=length(gl_PointCoord-vec2(.5));if(d>.5)discard;gl_FragColor=vec4(vColor,(1.-smoothstep(.28,.5,d))*vAlpha);\n#include <colorspace_fragment>\n}`});
+ const material=new THREE.ShaderMaterial({transparent:true,depthWrite:false,uniforms:{uTime:{value:0},uReveal:{value:0},uScatter:{value:0},uDrop:{value:0},uPixelRatio:{value:pixelRatio}},vertexShader:`attribute vec3 color;attribute float aSize;attribute float aSeed;uniform float uTime;uniform float uReveal;uniform float uScatter;uniform float uDrop;uniform float uPixelRatio;varying vec3 vColor;varying float vAlpha;void main(){vec3 p=position;float settle=1.-uReveal;p*=1.+settle*(.06+aSeed*.045);p+=vec3(sin(aSeed*38.),cos(aSeed*21.),sin(aSeed*55.))*settle*.065;float s=uScatter*(.35+.65*uScatter);p*=1.+s*(1.5+aSeed*.65);p.x+=sin(aSeed*48.)*s*.85;p.y+=cos(aSeed*37.)*s*.65;p.z+=cos(aSeed*29.)*s*.35;p+=normalize(position)*sin(uTime*.7+aSeed*14.)*.018;vec4 mv=modelViewMatrix*vec4(p,1.);gl_Position=projectionMatrix*mv;gl_Position.y-=uDrop*gl_Position.w;gl_PointSize=aSize*(.85+.15*uReveal)*uPixelRatio*clamp(10./-mv.z,.65,1.5);vColor=color;vAlpha=(.40+.60*smoothstep(-1.2,1.3,position.z))*(1.-smoothstep(.28,1.,uScatter));}`,fragmentShader:`varying vec3 vColor;varying float vAlpha;void main(){float d=length(gl_PointCoord-vec2(.5));if(d>.5)discard;gl_FragColor=vec4(vColor,(1.-smoothstep(.28,.5,d))*vAlpha);\n#include <colorspace_fragment>\n}`});
  const globe=new THREE.Points(geo,material);globe.frustumCulled=false;const globeHolder=new THREE.Group();globeHolder.add(globe);root.add(globeHolder);
  // The actual cross and particle sphere share one center and rotation. Opaque cross
  // surfaces occlude rear particles; near particles remain visible across its face.
@@ -79,6 +79,17 @@ async function startHero(){
  new ResizeObserver(resize).observe(host);resize();
  let visible=true;new IntersectionObserver(es=>{visible=es[0].isIntersecting;dirty=true},{rootMargin:'150px'}).observe(host);
  let mx=0,my=0;host.addEventListener('pointermove',e=>{dirty=true;const r=host.getBoundingClientRect();mx=((e.clientX-r.left)/r.width-.5)*.24;my=((e.clientY-r.top)/r.height-.5)*.09});host.addEventListener('pointerleave',()=>{dirty=true;mx=0;my=0});
+ // A single fade reveals the complete assembly without changing metal depth sorting.
+ // Particles gently settle into their globe positions during the same entrance.
+ const entranceDuration=1.4;
+ let entranceElapsed=0,entrance=0;
+ function revealHero(dt){
+  if(entrance===1)return;
+  entranceElapsed=reduced()?entranceDuration:Math.min(entranceDuration,entranceElapsed+dt);
+  entrance=THREE.MathUtils.smoothstep(entranceElapsed/entranceDuration,0,1);
+  canvas.style.opacity=String(entrance);
+  material.uniforms.uReveal.value=entrance;
+ }
  let t=0,last=performance.now(),scatter=0;
  function pose(dt){
   const paused=reduced();const progress=paused?0:(window.missionHeroScroll?.progress??0);scatter=progress;if(paused)scatter=0;
@@ -88,7 +99,7 @@ async function startHero(){
   const exitFade=THREE.MathUtils.smoothstep(window.missionHeroScroll?.exit??0,0,1);
   cross.traverse(o=>{if(o.isMesh){o.material.transparent=exitFade>0;o.material.opacity=1-exitFade}});globeHolder.rotation.y=t*.10;
   root.rotation.y+=((paused?0:mx)-root.rotation.y)*dt*3;root.rotation.x+=((paused?0:my)-root.rotation.x)*dt*3;
-  root.scale.setScalar(1-scatter*.055);crossHolder.rotation.y=.06;crossHolder.position.y=0;
+  root.scale.setScalar((1-scatter*.055)*(.975+.025*entrance));crossHolder.rotation.y=.06;crossHolder.position.y=0;
   globeVeil.material.opacity=.07*(1-scatter);ring.material.opacity=(1-scatter*.38)*(1-exitFade);ring.rotation.set(.18+Math.sin(t*.27)*.34,t*.16,Math.sin(t*.19)*.24);
   root.updateMatrixWorld(true);orbitTransform.setFromMatrix4(root.matrixWorld);
   letters.forEach(letter=>{
@@ -116,14 +127,14 @@ async function startHero(){
   if(reduced()&&!dirty)return;
   if(now-lastDraw<frameInterval-.5&&!dirty)return;
   const dt=Math.min((now-lastDraw)/1000,.05);lastDraw=now;drawing=true;dirty=false;
-  alignViewport();if(!reduced())t+=dt;pose(dt);renderer.render(scene,camera);
+  alignViewport();revealHero(dt);if(!reduced())t+=dt;pose(dt);renderer.render(scene,camera);
   // Lower the drawing resolution once if this device cannot sustain the initial budget.
   if(!reduced()&&frameInterval===0&&elapsed<100&&++samples<=150){
    frameTotal+=elapsed;
    if(samples===150&&frameTotal/samples>25){pixelRatio=Math.min(pixelRatio,1.25);frameInterval=1000/30;renderer.setPixelRatio(pixelRatio);material.uniforms.uPixelRatio.value=pixelRatio;resize()}
   }
  }
- pose(1);await renderer.compileAsync(scene,camera);renderer.render(scene,camera);
- window.missionHeroReady=true;host.classList.add('loaded');canvas.classList.add('ready');window.dispatchEvent(new Event('hero-ready'));last=performance.now();requestAnimationFrame(frame);
+ revealHero(0);pose(0);await renderer.compileAsync(scene,camera);renderer.render(scene,camera);
+ window.missionHeroReady=true;host.classList.add('loaded');canvas.classList.add('ready');window.dispatchEvent(new Event('hero-ready'));lastDraw=last=performance.now();requestAnimationFrame(frame);
  canvas.addEventListener('webglcontextlost',event=>{event.preventDefault();showFallback()});
 }

@@ -13,7 +13,7 @@ const pose=source.slice(source.indexOf(' function pose(dt){'),source.indexOf(' l
 const root=new THREE.Group(),scene=new THREE.Scene();scene.add(root);root.position.y=.15;
 const camera=new THREE.PerspectiveCamera(34,1,.1,100);camera.position.set(0,.1,10.1);
 const host={clientWidth:1000,clientHeight:500,getBoundingClientRect(){return {width:this.clientWidth,height:this.clientHeight,left:-this.clientWidth/22,top:80}}};
-const state={innerWidth:1000,innerHeight:500,addEventListener(){},cross:new THREE.Group(),THREE,gltf,type,dirty:false,scene,root,camera,host,renderer:{setSize(){}},t:0,scatter:0,mx:0,my:0,reduced:()=>false,window:{missionHeroScroll:{progress:0}},material:{uniforms:{uTime:{value:0},uScatter:{value:0},uDrop:{value:0}}},globeHolder:new THREE.Group(),crossHolder:new THREE.Group(),globeVeil:{material:{}},ring:new THREE.Mesh()};
+const state={innerWidth:1000,innerHeight:500,addEventListener(){},cross:new THREE.Group(),THREE,gltf,type,dirty:false,scene,root,camera,host,renderer:{setSize(){}},t:0,entrance:1,scatter:0,mx:0,my:0,reduced:()=>false,window:{missionHeroScroll:{progress:0}},material:{uniforms:{uTime:{value:0},uScatter:{value:0},uDrop:{value:0}}},globeHolder:new THREE.Group(),crossHolder:new THREE.Group(),globeVeil:{material:{}},ring:new THREE.Mesh()};
 const context=vm.createContext(state);new vm.Script(construction+pose).runInContext(context);
 const letters=new vm.Script('letters').runInContext(context);
 assert.equal(new vm.Script('name').runInContext(context),'MISSION WORLD CHURCH');
