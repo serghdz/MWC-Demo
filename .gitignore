@@ -4,3 +4,4 @@ dist/
 *.blend1
 *.tar.gz
 .DS_Store
+.openai/
