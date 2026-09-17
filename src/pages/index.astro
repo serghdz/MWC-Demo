@@ -5,6 +5,31 @@ import "../styles/global.css";
 <html lang="en">
 <head>
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <script is:inline>
+    (() => {
+      const navigation = performance.getEntriesByType('navigation')[0];
+      const isReload = navigation ? navigation.type === 'reload' : performance.navigation?.type === 1;
+      if (!isReload) return;
+
+      // Run in the head, before the browser can restore an old scroll position.
+      const previousRestoration = history.scrollRestoration;
+      history.scrollRestoration = 'manual';
+      if (location.hash) history.replaceState(history.state, '', location.pathname + location.search);
+
+      let interacted = false;
+      const respectInput = () => { interacted = true; };
+      for (const event of ['wheel', 'touchstart', 'pointerdown', 'keydown']) {
+        addEventListener(event, respectInput, { once: true, passive: true });
+      }
+      const resetTop = () => {
+        if (!interacted) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      };
+      resetTop();
+      document.addEventListener('DOMContentLoaded', resetTop, { once: true });
+      addEventListener('pageshow', event => { if (!event.persisted) resetTop(); }, { once: true });
+      addEventListener('pagehide', () => { history.scrollRestoration = previousRestoration; }, { once: true });
+    })();
+  </script>
   <meta name="theme-color" content="#071219">
   <title>Mission World Church — Live the Gospel Together</title>
   <meta name="description" content="Cultivating the human experience by living out the mission of the Gospel together. Join Mission World Church in Houston on Sundays at 12 PM.">
