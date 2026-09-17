@@ -44,9 +44,12 @@ async function startHero(){
  const edgeMaterial=new THREE.MeshStandardMaterial({color:0x617b8a,metalness:.72,roughness:.3,envMapIntensity:1.2,transparent:true,depthWrite:false});
  // Measure the complete name, including actual word spaces, before bending its baseline.
  for(const ch of name){const advance=font.data.glyphs[ch].ha/font.data.resolution*fontSize;glyphs.push({ch,center:nameWidth+advance/2});nameWidth+=advance+tracking}nameWidth-=tracking;
- for(let copy=0;copy<2;copy++)for(const glyph of glyphs){if(glyph.ch===' ')continue;
+ // Recycle the name along the visible arc with a short word-sized gap.
+ // The wrap occurs behind the edge fade, so empty space cannot cross the center.
+ const repeatGap=.28,repeatAngle=(nameWidth+repeatGap)/orbitRadius;
+ for(const glyph of glyphs){if(glyph.ch===' ')continue;
   if(!glyphCache.has(glyph.ch)){const geometry=new TextGeometry(glyph.ch,{font,size:fontSize,height:.045,curveSegments:5,bevelEnabled:true,bevelThickness:.004,bevelSize:.003,bevelSegments:2});geometry.center();geometry.computeBoundingBox();widestLetter=Math.max(widestLetter,geometry.boundingBox.max.x-geometry.boundingBox.min.x);glyphCache.set(glyph.ch,geometry)}
-  const letter=new THREE.Mesh(glyphCache.get(glyph.ch),[faceMaterial.clone(),edgeMaterial.clone()]);letter.name=glyph.ch;letter.userData.angle=Math.PI/2+(nameWidth/2-glyph.center)/orbitRadius+copy*Math.PI;orbit.add(letter);letters.push(letter);
+  const letter=new THREE.Mesh(glyphCache.get(glyph.ch),[faceMaterial.clone(),edgeMaterial.clone()]);letter.name=glyph.ch;letter.userData.angle=Math.PI/2+(nameWidth/2-glyph.center)/orbitRadius;orbit.add(letter);letters.push(letter);
  }
  // Letters stay upright. Their projected width follows the curve's spacing at its sides.
  const orbitPosition=new THREE.Vector3(),orbitTangent=new THREE.Vector3(),orbitTransform=new THREE.Matrix3();
@@ -71,12 +74,14 @@ async function startHero(){
   globeVeil.material.opacity=.07*(1-scatter);ring.material.opacity=(1-scatter*.38)*(1-exitFade);ring.rotation.set(.18+Math.sin(t*.27)*.34,t*.16,Math.sin(t*.19)*.24);
   root.updateMatrixWorld(true);orbitTransform.setFromMatrix4(root.matrixWorld);
   letters.forEach(letter=>{
-   const a=letter.userData.angle-t*.075,sin=Math.sin(a),cos=Math.cos(a);
+   const arcStart=Math.PI/2-repeatAngle/2,phase=THREE.MathUtils.euclideanModulo(letter.userData.angle-t*.075-arcStart,repeatAngle);
+   const a=arcStart+phase,sin=Math.sin(a),cos=Math.cos(a);
    orbitPosition.set(cos*orbitRadius,-sin*.48+.02,sin*orbitDepth);letter.position.copy(orbitPosition.applyMatrix4(root.matrixWorld));
    orbitTangent.set(-sin*orbitRadius,-cos*.48,cos*orbitDepth).applyMatrix3(orbitTransform);
    const distance=camera.position.z-letter.position.z;
    const facing=-(orbitTangent.x+(letter.position.x-camera.position.x)*orbitTangent.z/distance)/(orbitRadius*root.scale.x);
-   const front=THREE.MathUtils.smoothstep(facing,.10,.36);
+   const edge=THREE.MathUtils.smoothstep(Math.min(phase,repeatAngle-phase),0,.10);
+   const front=THREE.MathUtils.smoothstep(facing,.10,.36)*edge;
    letter.scale.set(root.scale.x*Math.max(.04,Math.min(1,facing))*.9,root.scale.x,root.scale.x);
    letter.visible=front>.005;letter.material.forEach(m=>m.opacity=front*(1-scatter*.6)*(1-exitFade));
   });
