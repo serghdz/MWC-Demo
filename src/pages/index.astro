@@ -1,3 +1,6 @@
+---
+import "../styles/global.css";
+---
 <!doctype html>
 <html lang="en">
 <head>
@@ -5,25 +8,16 @@
   <meta name="theme-color" content="#071219">
   <title>Mission World Church — Live the Gospel Together</title>
   <meta name="description" content="Cultivating the human experience by living out the mission of the Gospel together. Join Mission World Church in Houston on Sundays at 12 PM.">
-  <link rel="icon" href="./assets/logo.png"><link rel="stylesheet" href="./style.css?v=mobile-flow">
+  <link rel="icon" href="/assets/logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script type="importmap">{"imports":{"three":"./assets/vendor/three.module.js"}}</script>
-  <link rel="modulepreload" href="./assets/vendor/three.module.js">
-  <link rel="modulepreload" href="./hero.js?v=flat-ring">
-  <link rel="modulepreload" href="./assets/vendor/GLTFLoader.js">
-  <link rel="modulepreload" href="./assets/utils/BufferGeometryUtils.js">
-  <link rel="modulepreload" href="./assets/vendor/RoomEnvironment.js">
-  <link rel="modulepreload" href="./assets/vendor/FontLoader.js">
-  <link rel="modulepreload" href="./assets/vendor/TextGeometry.js">
-  <link rel="preload" href="./assets/cross.glb" as="fetch" crossorigin fetchpriority="high">
-  <link rel="preload" href="./assets/land.json" as="fetch" crossorigin fetchpriority="high">
-  <link rel="preload" href="./assets/helvetiker_bold.typeface.json" as="fetch" crossorigin fetchpriority="high">
+<link rel="preload" href="/assets/hero-assets.glb" as="fetch" type="model/gltf-binary" crossorigin="anonymous" />
+<link rel="preload" href="/assets/globe.bin" as="fetch" crossorigin="anonymous" />
 </head>
 <body>
 <a class="skip-link" href="#mission">Skip to content</a>
 <header class="site-header">
-  <a class="brand" href="#home" aria-label="Mission World Church home"><img src="./assets/logo.png" alt="" width="48" height="48"><span>MISSION WORLD<span class="brand-sub">CHURCH</span></span></a>
+  <a class="brand" href="#home" aria-label="Mission World Church home"><img src="/assets/logo.png" alt="" width="48" height="48"><span>MISSION WORLD<span class="brand-sub">CHURCH</span></span></a>
   <nav aria-label="Main navigation" id="navigation"><a href="#ministries">Ministries</a><a href="#values">Our values</a><a href="https://mymissionworld.org/prayer-request-2/">Prayer requests</a><a class="nav-give" href="https://pushpay.com/g/mymissionworld">Give <span aria-hidden="true">↗</span></a></nav>
   <button class="menu-toggle" aria-expanded="false" aria-controls="navigation" aria-label="Open navigation"><span></span><span></span></button>
 </header>
@@ -31,7 +25,7 @@
 <div class="hero-scroll" id="hero-scroll">
 <section class="hero" id="home" aria-labelledby="hero-title">
   <canvas id="star-canvas" aria-hidden="true"></canvas>
-  <div class="hero-art" role="img" aria-label="The church's silver cross inside a rotating particle world, surrounded by a metal ring and front-facing Mission World Church lettering."><img class="art-fallback" data-src="./assets/emblem-fallback.svg" alt="" width="800" height="680" hidden><noscript><img class="art-fallback no-script-emblem" src="./assets/emblem-fallback.svg" alt="" width="800" height="680"></noscript><canvas id="hero-canvas" aria-hidden="true"></canvas></div>
+  <div class="hero-art" role="img" aria-label="The church's silver cross inside a rotating particle world, surrounded by a metal ring and front-facing Mission World Church lettering."><img class="art-fallback" data-src="/assets/emblem-fallback.svg" alt="" width="800" height="680" hidden><noscript><img class="art-fallback no-script-emblem" src="/assets/emblem-fallback.svg" alt="" width="800" height="680"></noscript><canvas id="hero-canvas" aria-hidden="true"></canvas></div>
   <div class="hero-content">
     <h1 id="hero-title" class="visually-hidden">Mission World Church</h1>
     <p class="eyebrow">MARK 16:15</p>
@@ -45,19 +39,19 @@
 </div>
 <section class="mission section" id="mission"><div class="section-label"><span>01 / OUR MISSION</span><span>MARK 16:15</span></div><h2 data-reveal>Faith is meant to be lived.<br><span class="soft">And life is better together.</span></h2><p class="mission-copy" data-reveal>We are a community living out the mission of the Gospel together—in our relationships, in our city, and in our world.</p></section>
 <section class="story section" id="community" aria-labelledby="explore-title">
- <a class="particle-photo photo-tall" href="https://mymissionworld.org/connect/" aria-label="Connect with a Mission House"><img src="./assets/community.jpg" width="768" height="1024" loading="lazy" alt="Members of Mission World Church praying together in a home"><span class="photo-note">LIFE, SHARED.</span></a>
+ <a class="particle-photo photo-tall" href="https://mymissionworld.org/connect/" aria-label="Connect with a Mission House"><img src="/assets/community.jpg" width="768" height="1024" loading="lazy" alt="Members of Mission World Church praying together in a home"><span class="photo-note">LIFE, SHARED.</span></a>
  <div class="story-copy"><p class="eyebrow">02 / EXPLORE TOGETHER</p><h2 data-reveal id="explore-title">A place to belong.<br><span class="soft">A faith to share.</span></h2><p data-reveal>It starts around a table. In Mission Houses across our city, we gather to explore our faith, grow as disciples, and learn to live on mission together.</p><a class="text-link large-link" href="https://mymissionworld.org/connect/">Find your community <span aria-hidden="true">↗</span></a><div class="story-footnote"><span>IN OUR HOMES.</span><span>THROUGHOUT OUR CITY.</span></div></div>
 </section>
 <section class="story story-reverse section" aria-labelledby="discover-title">
  <div class="story-copy"><p class="eyebrow">03 / DISCOVER JESUS</p><h2 data-reveal id="discover-title">Come as you are.<br><span class="soft">Grow in His love.</span></h2><p data-reveal>Through prayer, praise, and the teaching of God’s Word, we seek to know Jesus. Join us on Sundays as we worship and discover Him together.</p><a class="text-link large-link" href="https://mymissionworld.org/connect/">Join us this Sunday <span aria-hidden="true">↗</span></a><div class="story-footnote"><span>SUNDAYS AT 12 PM</span><span>YOU’RE WELCOME HERE.</span></div></div>
- <a class="particle-photo photo-square" href="https://mymissionworld.org/connect/" aria-label="Connect with Mission World Church"><img src="./assets/worship.jpg" width="1024" height="768" loading="lazy" alt="A baptism surrounded by the Mission World Church community"><span class="photo-note">NEW LIFE, TOGETHER.</span></a>
+ <a class="particle-photo photo-square" href="https://mymissionworld.org/connect/" aria-label="Connect with Mission World Church"><img src="/assets/worship.jpg" width="1024" height="768" loading="lazy" alt="A baptism surrounded by the Mission World Church community"><span class="photo-note">NEW LIFE, TOGETHER.</span></a>
 </section>
-<section class="peace section" aria-labelledby="peace-title"><div class="section-label"><span>04 / SPREAD PEACE</span><span>FROM OUR CITY, TO OUR WORLD.</span></div><div class="peace-layout"><h2 data-reveal id="peace-title">Love your neighbor.<br>Care for your city.<br><span class="soft">Touch the world.</span></h2><div><p data-reveal>Our mission continues beyond Sunday. In the places we live and work, we seek to be the heart and hands of God—sharing His love through the way we care for others.</p><a class="text-link large-link" href="https://mymissionworld.org/connect/">Live on mission with us <span aria-hidden="true">↗</span></a></div></div><a class="particle-photo photo-wide" href="https://mymissionworld.org/connect/" aria-label="Be part of our community"><img src="./assets/serve.jpg" width="1024" height="866" loading="lazy" alt="A member wearing a Light Up the World shirt at a church gathering"><span class="photo-note">SMALL ACTS. LASTING LOVE.</span></a></section>
+<section class="peace section" aria-labelledby="peace-title"><div class="section-label"><span>04 / SPREAD PEACE</span><span>FROM OUR CITY, TO OUR WORLD.</span></div><div class="peace-layout"><h2 data-reveal id="peace-title">Love your neighbor.<br>Care for your city.<br><span class="soft">Touch the world.</span></h2><div><p data-reveal>Our mission continues beyond Sunday. In the places we live and work, we seek to be the heart and hands of God—sharing His love through the way we care for others.</p><a class="text-link large-link" href="https://mymissionworld.org/connect/">Live on mission with us <span aria-hidden="true">↗</span></a></div></div><a class="particle-photo photo-wide" href="https://mymissionworld.org/connect/" aria-label="Be part of our community"><img src="/assets/serve.jpg" width="1024" height="866" loading="lazy" alt="A member wearing a Light Up the World shirt at a church gathering"><span class="photo-note">SMALL ACTS. LASTING LOVE.</span></a></section>
 <section class="ministries section" id="ministries" aria-labelledby="ministries-title"><div class="section-label"><span>05 / GROW TOGETHER</span><a href="https://mymissionworld.org/ministries/">ALL MINISTRIES ↗</a></div><div class="ministry-heading"><h2 data-reveal id="ministries-title">There’s a place<br><span class="soft">for you here.</span></h2><p data-reveal>At every age and stage, we learn to live out the Gospel in community.</p></div><div class="ministry-list"><a href="https://mymissionworld.org/ministries/"><span class="list-number">01</span><span>Men on Mission<small>Strengthened in faith. Supported in community.</small></span><span aria-hidden="true">↗</span></a><a href="https://mymissionworld.org/ministries/"><span class="list-number">02</span><span>Flourish<small>Women growing in faith, purpose, and wholeness.</small></span><span aria-hidden="true">↗</span></a><a href="https://mymissionworld.org/ministries/"><span class="list-number">03</span><span>Mission World Kids<small>Helping children grow in the love of Christ.</small></span><span aria-hidden="true">↗</span></a><a href="https://mymissionworld.org/ministries/"><span class="list-number">04</span><span>Legacy<small>Equipping families at every age and stage.</small></span><span aria-hidden="true">↗</span></a></div></section>
 <section class="values section" id="values" aria-labelledby="values-title"><div class="section-label"><span>06 / WHAT GUIDES US</span><a href="https://mymissionworld.org/values/">OUR VALUES ↗</a></div><h2 data-reveal id="values-title">A mission we believe.<br><span class="soft">Values we live.</span></h2><div class="values-grid"><article><h3 data-reveal>People Passion</h3><p>Loving people is our mission because loving people is God’s passion.</p></article><article><h3 data-reveal>Open Hands</h3><p>Serving our neighbors and caring for those in need.</p></article><article><h3 data-reveal>Surrendered Gifts</h3><p>Bringing our gifts together for the mission of the Gospel.</p></article><article><h3 data-reveal>Dynamic Giving</h3><p>Giving generously of ourselves and our resources.</p></article></div></section>
 <section class="gather section" id="connect"><p class="eyebrow">SUNDAYS · 12 PM · HOUSTON</p><h2 data-reveal>Let’s live on<br><span>mission. Together.</span></h2><a class="button button-light" href="https://mymissionworld.org/connect/">Connect with our family <span aria-hidden="true">↗</span></a><p>16725 Longenbaugh Drive, Houston, TX 77095</p></section>
 </main>
 <footer><a class="brand" href="#home"><span>MISSION WORLD<span class="brand-sub">CHURCH</span></span></a><p>Go into all the world.<span>MARK 16:15</span></p><div><a href="https://www.instagram.com/missionworldchurch/">Instagram ↗</a><a href="https://www.youtube.com/@MyMissionWorldChurch">YouTube ↗</a><a href="mailto:Info@MyMissionWorld.org">Email ↗</a></div><small>© 2026 Mission World Church</small></footer>
 <canvas id="reveal-particles" aria-hidden="true"></canvas>
-<script src="./motion.js?v=mobile-flow" defer></script><script type="module" src="./hero.js?v=flat-ring"></script>
+<script>import "../scripts/motion.js"; import "../scripts/hero.js";</script>
 </body></html>

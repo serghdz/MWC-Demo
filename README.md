@@ -1,17 +1,28 @@
-# Mission World Church concept
+# Mission World Church
 
-A standalone homepage concept using the church's custom Blender cross, a geographic particle globe, scroll-driven particle text and photo reveals, and pointer/focus photo effects.
+Astro produces the static website. Three.js renders the Blender-authored hero. The main project is this MWC folder.
 
-The name now uses wider tracking on a tighter orbit just outside the metal ring. The globe dissolve renders in a transparent viewport layer so it can continue across the first section boundary without hero clipping. A short sticky opening leads into a scroll-driven tail that fades particles fully to zero; fast swipes do not leave a delayed partial dissolve, and mobile browser-bar resizing does not reset the scroll range.
+## Develop
 
-The site is in `dist/`. Serve that directory over HTTP. No framework build is required. The real church website is unchanged; existing church links open its connection, prayer and giving pages.
+Install Node 22.12 or newer, then run `npm ci` and `npm run dev`. Use `npm run build` for the production output in `dist/`.
 
-`hero.js` contains the Three.js scene; `motion.js` controls scroll reveals and photo interactions; `style.css` defines responsive layouts. A short native sticky interval starts the globe's particle dissolve before the hero scrolls away, without intercepting touch, wheel, or keyboard input. Scrolling back reverses the dissolve. The Pause motion button and operating-system reduced-motion setting disable ambient movement and skip this interval. Text remains normal accessible HTML.
+- `src/pages/index.astro`: content and accessible HTML.
+- `src/styles/global.css`: layout, mobile spacing, and visual styles.
+- `src/scripts/hero.js`: rotation, front-facing curved lettering, and particle dispersion.
+- `src/scripts/motion.js`: native scroll progression, photo hover particles, and pause controls.
+- `assets/blender/mission-world-hero.blend`: editable cross, flat ring, bold lettering masters, and geographic particle preview.
+- `public/assets/`: only the exported assets needed by visitors.
 
-The 3D modules, model, geography, and typeface are preloaded together. The first emblem shown during normal loading is the complete animated scene, with no static placeholder or crossfade. A static emblem is reserved for WebGL failure or disabled JavaScript. The full name MISSION WORLD CHURCH follows a continuous curved orbit, with the complete name centered on the front at startup. Bold, beveled letters use measured font advances and word spaces. They remain upright and front-facing; their width follows projected arc spacing as they wrap around the sides, and rear lettering fades away. Blue and green photo-hover particles stay within a soft cursor-following area.
+## Blender asset pipeline
 
-The GLB was exported from the saved Blender model after sphere resizing and front-face alignment. Its metallic finish uses an environment-lit silver shader with fine procedural roughness. It is not an AI-generated replacement mesh.
+Run Blender in background mode with `--factory-startup --python scripts/build_hero_assets.py`. It generates the native scene, a preview, the shared GLB, glyph spacing metadata, and the binary geographic point layout. The cross source and typeface are preserved alongside the native file. The globe has 3,717 points; the browser animates their spread on the GPU without recalculating geography.
 
-Assets: church copy and photos from https://mymissionworld.org/ and its Ministries and Values pages; land outlines from Natural Earth (public domain); Three.js 0.160.1 (MIT license included). Fonts use Google Fonts. The site contains no analytics or data collection.
+## Rendering
 
-To integrate with WordPress, retain the scoped hero layout and module assets, load the import map before the hero module, and attach reveal attributes and photo classes to existing content. Review the theme's typography, spacing and script policies in staging before replacing the live homepage.
+The first visible hero is the complete 3D assembly. Its meshes and particle data preload together. Curved letters share twelve prebuilt glyph geometries and remain upright. Reduced-motion and pause controls stop ambient animation. Hidden/offscreen scenes stop drawing; smaller devices start at a lower pixel density, with a further one-way adjustment for sustained slow frames. Mobile scrolling stays native, with the particle tail drawn across the transition into the next section.
+
+`npm run build` bundles only the required Three.js modules and generates static HTML. No React runtime, server rendering process, or globe/font geometry generation is required on a visitor's phone. Real-device frame rates still depend on hardware and browser capabilities.
+
+## Hosting
+
+The existing owner-private Site is bound through `.openai/hosting.json`. Its static output directory is `dist`. Original church links continue to point to the official website.
