@@ -35,7 +35,11 @@ async function startHero(){
  // surfaces occlude rear particles; near particles remain visible across its face.
  globeHolder.add(crossHolder);
  const globeVeil=new THREE.Mesh(new THREE.SphereGeometry(2.10,48,32),new THREE.MeshBasicMaterial({color:0x174756,transparent:true,opacity:.07,depthWrite:false}));globeHolder.add(globeVeil);
- const ring=new THREE.Mesh(new THREE.TorusGeometry(2.30,.048,20,200),new THREE.MeshStandardMaterial({color:0xc1c7ca,metalness:1,roughness:.23,envMapIntensity:1.55,transparent:true,opacity:1}));ring.rotation.x=.10;ring.position.z=-.06;root.add(ring);
+ // A rectangular metal band with planar front/back faces and small edge bevels.
+ const ringOutline=new THREE.Shape();ringOutline.absarc(0,0,2.34,0,Math.PI*2,false);
+ const ringHole=new THREE.Path();ringHole.absarc(0,0,2.19,0,Math.PI*2,true);ringOutline.holes.push(ringHole);
+ const ringGeometry=new THREE.ExtrudeGeometry(ringOutline,{depth:.22,steps:1,curveSegments:128,bevelEnabled:true,bevelThickness:.012,bevelSize:.012,bevelSegments:2});ringGeometry.translate(0,0,-.11);
+ const ring=new THREE.Mesh(ringGeometry,new THREE.MeshStandardMaterial({color:0xc1c7ca,metalness:1,roughness:.23,envMapIntensity:1.55,transparent:true,opacity:1}));ring.rotation.x=.10;ring.position.z=0;root.add(ring);
  // This group never inherits the emblem's rotation or pointer tilt.
  const orbit=new THREE.Group();scene.add(orbit);
  const name='MISSION WORLD CHURCH',fontSize=.245,tracking=.090,orbitRadius=2.52,orbitDepth=2.52;
