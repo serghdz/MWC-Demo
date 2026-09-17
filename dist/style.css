@@ -24,7 +24,7 @@
 
 /* Native sticky scroll gives the dissolve a short runway without intercepting gestures. */
 .hero-scroll{position:relative;background:#071219}.hero-scroll.is-pinned>.hero{position:sticky;top:0}.hero-scroll .hero{height:100svh;min-height:0;max-height:none}.hero-scroll .hero-art{top:92px;bottom:240px}.hero-scroll .hero-content{bottom:58px}
-.hero-scroll .art-fallback{width:100%;height:100%;left:0;top:0;opacity:.95;object-fit:contain}.hero-art.loaded .art-fallback{opacity:0}.hero-art canvas{transition:opacity .8s}.art-fallback{transition:opacity .8s}.hero-content,.hero-explore{will-change:opacity,transform}
+.hero-scroll .art-fallback{display:none;width:100%;height:100%;left:0;top:0;opacity:.95;object-fit:contain}.hero-art.failed .art-fallback,.hero-scroll .no-script-emblem{display:block}.hero-art canvas,.hero-scroll .art-fallback{transition:none}.hero-art.loaded canvas{opacity:1}.hero-content,.hero-explore{will-change:opacity,transform}
 .photo-grid{mix-blend-mode:normal}.no-motion .hero-content,.no-motion .hero-explore{opacity:1!important;transform:none!important}
 @media(max-width:700px){.hero-scroll .hero-art{top:80px;bottom:280px}.hero-scroll .hero-content{bottom:65px}.hero-scroll .hero-description{font-size:18px}}
 @media(max-height:760px) and (min-width:701px){.hero-scroll .hero-art{top:90px;bottom:232px}.hero-scroll .hero-content{bottom:50px}.hero-scroll .hero-description{font-size:19px;max-width:650px}.hero-scroll .hero-gathering{margin-bottom:15px}.hero-scroll .hero-content .eyebrow{margin-bottom:10px}}
