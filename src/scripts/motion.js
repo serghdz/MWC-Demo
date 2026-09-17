@@ -47,15 +47,16 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{win
     cc.fillText(word.el.textContent,0,(word.h-ascent-descent)/2+ascent,word.w);
     const data=cc.getImageData(0,0,c.width,c.height).data;word.points=[];
     // A fine, softly irregular grain follows the actual glyphs, including their edges.
-    const step=vw<700?2.7:2.3;
+    const step=vw<700?2.25:1.9;
     for(let y=0;y<c.height;y+=step)for(let x=0;x<c.width;x+=step){
      const coverage=data[(Math.floor(y)*c.width+Math.floor(x))*4+3]/255;if(coverage<.22)continue;
      const seed=hash(x*2+y*11+word.i),swirl=hash(x*17+y*3+word.i*7);
+     const driftAngle=swirl*Math.PI*2,driftRadius=16+seed*30;
      word.points.push({x:x+(seed-.5)*.4,y:y+(swirl-.5)*.4,seed,
       delay:.04+(x/Math.max(1,word.w))*.17+swirl*.13,
-      driftX:(swirl-.5)*34,driftY:-16-seed*22,
-      size:.65+seed*.45,alpha:.42+coverage*.38,
-      color:seed>.5?'#85b5f3':'#8bdfc4'});
+      driftX:Math.cos(driftAngle)*driftRadius*1.15,driftY:Math.sin(driftAngle)*driftRadius*.85-5,
+      size:.75+seed*.45,alpha:.60+coverage*.34,
+      color:seed>.5?'#9fcdff':'#a4f1d3'});
     }
    }
   }
@@ -113,14 +114,16 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{win
      word.el.style.transform=ink>.999?'none':`translateY(${lift.toFixed(3)}px)`;word.last=p;
     }
     if(paused||p<=.001||p>=.999)continue;
-    const envelope=smooth(p/.14)*(1-smooth((p-.58)/.42));
+    const envelope=smooth(p/.14)*(1-smooth((p-.64)/.36));
     for(const dot of word.points){
      // Each grain approaches its own place, then hands off to the solid letter.
      const phase=clamp((p-dot.delay)/.64),arrival=phase*phase*phase*(phase*(phase*6-15)+10);
      const spread=1-arrival,arc=Math.sin(phase*Math.PI)*spread;
      const dx=dot.driftX*spread+(dot.seed-.5)*10*arc;
      const dy=dot.driftY*spread+Math.sin(dot.seed*6.283)*5*arc;
-     ctx.globalAlpha=envelope*dot.alpha;ctx.fillStyle=dot.color;
+     // More of the fine grain becomes visible as the surrounding cloud gathers.
+     const density=.55+.45*smooth((p-dot.seed*.18)/.24);
+     ctx.globalAlpha=envelope*dot.alpha*density;ctx.fillStyle=dot.color;
      const size=dot.size*(.8+.2*arrival);
      // Screen position tracks native scroll exactly; only the reveal progress eases.
      ctx.fillRect(word.x+dot.x+dx,word.y-scroll+lift+dot.y+dy,size,size);
