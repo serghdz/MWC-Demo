@@ -27,33 +27,53 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{win
  const surface=document.querySelector('#reveal-particles');if(!surface)return;
  const ctx=surface.getContext('2d');if(!ctx)return;
  const clamp=(x)=>Math.max(0,Math.min(1,x)),smooth=(x)=>{x=clamp(x);return x*x*(3-2*x)},hash=n=>{const v=Math.sin(n*127.1+31.7)*43758.5453;return v-Math.floor(v)};
- let vw=innerWidth,vh=innerHeight,scroll=scrollY,target=scrollY,raf=0,last=0;
+ let vw=innerWidth,vh=innerHeight,scroll=scrollY,raf=0,last=0,measured=false,measureRaf=0;
  const groups=[],photos=[];
  document.querySelectorAll('[data-reveal]').forEach(el=>{
   const nodes=[];const walker=document.createTreeWalker(el,NodeFilter.SHOW_TEXT);while(walker.nextNode())nodes.push(walker.currentNode);
   for(const node of nodes){const frag=document.createDocumentFragment();for(const part of node.textContent.split(/(\s+)/)){if(!part)continue;if(/^\s+$/.test(part))frag.appendChild(document.createTextNode(part));else{const span=document.createElement('span');span.className='word';span.textContent=part;frag.appendChild(span)}}node.replaceWith(frag)}
-  groups.push({el,words:[...el.querySelectorAll('.word')].map((el,i)=>({el,i,points:[],last:-1})),top:0,height:0});
+  groups.push({el,words:[...el.querySelectorAll('.word')].map((el,i)=>({el,i,points:[],last:-1,progress:null})),top:0,height:0});
  });
  function measure(){
   vw=innerWidth;vh=innerHeight;const dpr=Math.min(devicePixelRatio,1.5);surface.width=vw*dpr;surface.height=vh*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
-  for(const group of groups){const r=group.el.getBoundingClientRect();group.top=r.top+scrollY;group.height=r.height;
+  for(const group of groups){const r=group.el.getBoundingClientRect();group.top=r.top+scrollY;group.height=r.height;group.x=r.left;group.width=r.width;
    for(const word of group.words){word.el.style.transform='none';const rect=word.el.getBoundingClientRect(),style=getComputedStyle(word.el);word.x=rect.left;word.y=rect.top+scrollY;word.w=rect.width;word.h=rect.height;word.last=-1;
-    const c=document.createElement('canvas');c.width=Math.ceil(word.w)+4;c.height=Math.ceil(word.h)+4;const cc=c.getContext('2d');cc.font=`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;cc.textBaseline='middle';cc.fillStyle='#fff';cc.fillText(word.el.textContent,1,word.h*.5);const data=cc.getImageData(0,0,c.width,c.height).data;word.points=[];const step=vw<700?5:4;
-    for(let y=0;y<c.height;y+=step)for(let x=0;x<c.width;x+=step)if(data[(y*c.width+x)*4+3]>110)word.points.push({x,y,seed:hash(x*2+y*11+word.i)});
+    const c=document.createElement('canvas');c.width=Math.ceil(word.w)+2;c.height=Math.ceil(word.h)+2;
+    const cc=c.getContext('2d');cc.font=`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    if('letterSpacing' in cc)cc.letterSpacing=style.letterSpacing;
+    cc.textBaseline='alphabetic';cc.fillStyle='#fff';
+    const metrics=cc.measureText(word.el.textContent),fontSize=parseFloat(style.fontSize);
+    const ascent=metrics.fontBoundingBoxAscent??fontSize*.8,descent=metrics.fontBoundingBoxDescent??fontSize*.2;
+    cc.fillText(word.el.textContent,0,(word.h-ascent-descent)/2+ascent,word.w);
+    const data=cc.getImageData(0,0,c.width,c.height).data;word.points=[];
+    // A fine, softly irregular grain follows the actual glyphs, including their edges.
+    const step=vw<700?2.7:2.3;
+    for(let y=0;y<c.height;y+=step)for(let x=0;x<c.width;x+=step){
+     const coverage=data[(Math.floor(y)*c.width+Math.floor(x))*4+3]/255;if(coverage<.22)continue;
+     const seed=hash(x*2+y*11+word.i),swirl=hash(x*17+y*3+word.i*7);
+     word.points.push({x:x+(seed-.5)*.4,y:y+(swirl-.5)*.4,seed,
+      delay:.04+(x/Math.max(1,word.w))*.17+swirl*.13,
+      driftX:(swirl-.5)*34,driftY:-16-seed*22,
+      size:.65+seed*.45,alpha:.42+coverage*.38,
+      color:seed>.5?'#85b5f3':'#8bdfc4'});
+    }
    }
   }
   for(const p of photos){const r=p.el.getBoundingClientRect();p.x=r.left;p.y=r.top+scrollY;p.w=r.width;p.h=r.height;for(const c of[p.cover,p.grid]){c.width=Math.round(r.width*dpr);c.height=Math.round(r.height*dpr);c.getContext('2d').setTransform(dpr,0,0,dpr,0,0)}p.last=-1}
-  wake();
+  measured=true;wake();
  }
+ function scheduleMeasure(){if(!measureRaf)measureRaf=requestAnimationFrame(()=>{measureRaf=0;measure()})}
  document.querySelectorAll('.particle-photo').forEach(el=>{
   const img=el.querySelector('img'),cover=document.createElement('canvas'),grid=document.createElement('canvas');cover.className='photo-dissolve';grid.className='photo-grid';cover.setAttribute('aria-hidden','true');grid.setAttribute('aria-hidden','true');el.append(cover,grid);
   const p={el,img,cover,grid,mx:.5,my:.5,tx:.5,ty:.5,hover:0,active:false,last:-1};photos.push(p);
   el.addEventListener('pointermove',e=>{const r=el.getBoundingClientRect();p.tx=(e.clientX-r.left)/r.width;p.ty=(e.clientY-r.top)/r.height;p.active=e.pointerType!=='touch';wake()});
-  el.addEventListener('pointerleave',()=>{p.active=false;wake()});el.addEventListener('focus',()=>{p.active=true;p.tx=p.ty=.5;wake()});el.addEventListener('blur',()=>{p.active=false;wake()});img.addEventListener('load',measure);
+  el.addEventListener('pointerleave',()=>{p.active=false;wake()});el.addEventListener('focus',()=>{p.active=true;p.tx=p.ty=.5;wake()});el.addEventListener('blur',()=>{p.active=false;wake()});img.addEventListener('load',scheduleMeasure);
  });
  function renderPhoto(p,time,dt,paused){
   const y=p.y-scroll;if(y>vh+80||y+p.h<0)return false;
-  const progress=paused?1:smooth((vh*.94-y)/Math.min(vh*.65,p.h*.85));
+  const desired=paused?1:smooth((vh*.94-y)/Math.min(vh*.65,p.h*.85));
+  if(p.progress===undefined||paused)p.progress=desired;else p.progress+=(desired-p.progress)*(1-Math.exp(-dt/.085));
+  const settling=Math.abs(desired-p.progress)>.0008;if(!settling)p.progress=desired;const progress=p.progress;
   const cc=p.cover.getContext('2d');
   if(Math.abs(progress-p.last)>.005&&p.img.complete&&p.img.naturalWidth){
    p.last=progress;cc.clearRect(0,0,p.w,p.h);
@@ -63,26 +83,57 @@ matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',e=>{win
    }
   }
   p.hover+=((p.active&&!paused?1:0)-p.hover)*Math.min(1,dt*7);p.mx+=(p.tx-p.mx)*Math.min(1,dt*6);p.my+=(p.ty-p.my)*Math.min(1,dt*6);
-  const gc=p.grid.getContext('2d');gc.clearRect(0,0,p.w,p.h);if(p.hover<.004||paused)return false;
+  const gc=p.grid.getContext('2d');gc.clearRect(0,0,p.w,p.h);if(p.hover<.004||paused)return settling;
   const radius=Math.min(195,p.w*.45),cx=p.mx*p.w,cy=p.my*p.h;const spacing=11;
   for(let y=0;y<p.h;y+=spacing)for(let x=0;x<p.w;x+=spacing){const dx=x-cx,dy=y-cy,d=Math.hypot(dx,dy)/radius;if(d>1.2)continue;const strength=Math.max(0,1-d/1.2);const wave=Math.sin(d*9-time*.7)*3*strength*p.hover;const dot=1.1+strength*.8;gc.fillStyle=hash(x*7+y*11)>.5?'#26e5a2':'#388dff';gc.globalAlpha=strength*.64*p.hover;gc.beginPath();gc.arc(x+(dx/(radius||1))*wave,y+wave,dot,0,Math.PI*2);gc.fill()}
   gc.globalAlpha=1;return true;
  }
- function draw(now){raf=0;const dt=Math.min((now-last)/1000,.05)||.016;last=now;const paused=window.missionMotion.paused;scroll+=(target-scroll)*Math.min(1,dt*12);if(Math.abs(target-scroll)<.08)scroll=target;
+ function draw(now){
+  raf=0;if(!measured)return;
+  const dt=Math.min((now-last)/1000,.05)||.016;last=now;
+  const paused=window.missionMotion.paused;scroll=scrollY;
+  const follow=1-Math.exp(-dt/0.085);let settling=false;
   ctx.clearRect(0,0,vw,vh);
-  for(const group of groups){const gy=group.top-scroll;if(gy>vh+70||gy+group.height< -70)continue;
-   for(const word of group.words){const flow=(vh*.87-gy)/(vh*.62);const p=paused?1:clamp(flow*1.5-word.i/Math.max(1,group.words.length-1)*.43);const ink=smooth((p-.18)/.7);
-    if(Math.abs(p-word.last)>.003){word.el.style.opacity=String(.12+ink*.88);word.el.style.filter=`blur(${((1-ink)*2).toFixed(2)}px)`;word.el.style.transform=`translateY(${((1-ink)*7).toFixed(2)}px)`;word.last=p}
-    if(paused||p<.01||p>.98)continue;
-    const alpha=Math.sin(p*Math.PI)*.8;for(const dot of word.points){const drift=(1-p)*(1-p);const dx=(dot.seed-.5)*25*drift,dy=-18*drift+Math.sin(dot.seed*12+now*.0008)*4*drift;ctx.globalAlpha=alpha*(.35+dot.seed*.65);ctx.fillStyle=dot.seed>.6?'#6d9dee':'#83dec1';ctx.fillRect(word.x+dot.x+dx,word.y-scroll+dot.y+dy,1.3,1.3)}
+  for(const group of groups){
+   const gy=group.top-scroll;
+   if(gy>vh+80||gy+group.height< -80){
+    // Complete skipped words after a fast swipe; reset words below the viewport.
+    for(const word of group.words){const p=paused||gy+group.height<0?1:0;if(word.progress===p&&word.last===p)continue;word.progress=p;word.last=p;word.el.style.opacity=p?'1':'.06';word.el.style.filter=p?'none':'blur(.65px)';word.el.style.transform=p?'none':'translateY(4px)'}
+    continue;
    }
-  }ctx.globalAlpha=1;
+   for(const word of group.words){
+    const y=word.y-scroll,across=clamp((word.x-group.x)/Math.max(1,group.width));
+    const desired=paused?1:clamp((vh*.96-y)/Math.min(vh*.55,420)-across*.075);
+    if(word.progress===null||paused)word.progress=desired;
+    else{word.progress+=(desired-word.progress)*follow;if(Math.abs(desired-word.progress)<.0008)word.progress=desired;else settling=true}
+    const p=word.progress,ink=smooth((p-.32)/.68),lift=(1-ink)*4;
+    if(Math.abs(p-word.last)>.0005||p===0||p===1){
+     word.el.style.opacity=String(.06+ink*.94);
+     word.el.style.filter=ink>.999?'none':`blur(${((1-ink)*.65).toFixed(3)}px)`;
+     word.el.style.transform=ink>.999?'none':`translateY(${lift.toFixed(3)}px)`;word.last=p;
+    }
+    if(paused||p<=.001||p>=.999)continue;
+    const envelope=smooth(p/.14)*(1-smooth((p-.58)/.42));
+    for(const dot of word.points){
+     // Each grain approaches its own place, then hands off to the solid letter.
+     const phase=clamp((p-dot.delay)/.64),arrival=phase*phase*phase*(phase*(phase*6-15)+10);
+     const spread=1-arrival,arc=Math.sin(phase*Math.PI)*spread;
+     const dx=dot.driftX*spread+(dot.seed-.5)*10*arc;
+     const dy=dot.driftY*spread+Math.sin(dot.seed*6.283)*5*arc;
+     ctx.globalAlpha=envelope*dot.alpha;ctx.fillStyle=dot.color;
+     const size=dot.size*(.8+.2*arrival);
+     // Screen position tracks native scroll exactly; only the reveal progress eases.
+     ctx.fillRect(word.x+dot.x+dx,word.y-scroll+lift+dot.y+dy,size,size);
+    }
+   }
+  }
+  ctx.globalAlpha=1;
   let hover=false;for(const photo of photos)hover=renderPhoto(photo,now*.001,dt,paused)||hover;
-  if(Math.abs(scroll-target)>.08||hover)wake();
+  if(settling||hover)wake();
  }
  function wake(){if(!raf&&!document.hidden)raf=requestAnimationFrame(draw)}
- addEventListener('scroll',()=>{target=scrollY;wake()},{passive:true});addEventListener('resize',measure);addEventListener('hero-layout',measure);addEventListener('motionchange',()=>{for(const g of groups)for(const w of g.words)w.last=-1;for(const p of photos)p.last=-1;wake()});document.addEventListener('visibilitychange',wake);
- const startReveals=()=>{measure();document.fonts.ready.then(measure)};
+ addEventListener('scroll',wake,{passive:true});addEventListener('resize',scheduleMeasure);addEventListener('hero-layout',scheduleMeasure);addEventListener('motionchange',()=>{for(const g of groups)for(const w of g.words)w.last=-1;for(const p of photos)p.last=-1;wake()});document.addEventListener('visibilitychange',wake);
+ const startReveals=()=>{measure();document.fonts.ready.then(scheduleMeasure)};
  const scheduleReveals=()=>requestAnimationFrame(()=>{if('requestIdleCallback' in window)requestIdleCallback(startReveals,{timeout:750});else setTimeout(startReveals,0)});
  if(window.missionHeroReady)scheduleReveals();else addEventListener('hero-ready',scheduleReveals,{once:true});
 })();
